@@ -16,7 +16,7 @@ const config = {
 };
 
 const CABINET_KEYS = {
-  P1_U: ['w', 'ArrowUp'],
+  P1_U: ['w'],
   P1_D: ['s', 'ArrowDown'],
   P1_L: ['a', 'ArrowLeft'],
   P1_R: ['d', 'ArrowRight'],
@@ -63,7 +63,7 @@ function create() {
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.timerText = scene.add.text(730, 60, 'TIME:\n60', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
-  scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: B1 | DROP: B2 | POWER: B3 | RESTART: START', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
+  scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
 }
 
@@ -250,6 +250,7 @@ function update(time, delta) {
   // Controls: P1_3 (Super Power)
   if (scene.controls.pressed['P1_3']) {
     if (scene.energy >= 100) {
+      // Level 3: Clear 4 lines
       scene.energy = 0;
       for (let i = 0; i < 4; i++) {
         scene.board.pop();
@@ -257,11 +258,13 @@ function update(time, delta) {
       }
       scene.score += 500;
       scene.scoreText.setText('SCORE:\n' + scene.score);
-    } else if (scene.energy >= 50 && scene.slowMoTimer <= 0) {
+    } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
+      // Level 2: SlowMo
       scene.energy -= 66.66;
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
-    } else if (scene.energy >= 33.33) {
+    } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
+      // Level 1: Destroy piece
       scene.energy -= 33.33;
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
@@ -334,7 +337,7 @@ function update(time, delta) {
   scene.graphics.fillRect(barX, barY, barW, barH);
   
   const fillH = (scene.energy / 100) * barH;
-  scene.graphics.fillStyle(scene.energy >= 100 ? 0x00ff00 : (scene.energy >= 50 ? 0x00ffff : 0xffaa00), 1);
+  scene.graphics.fillStyle(scene.energy >= 100 ? 0x00ff00 : (scene.energy >= 66.66 ? 0x00ffff : 0xffaa00), 1);
   scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
   scene.graphics.lineStyle(2, 0xffffff, 1);
   scene.graphics.strokeRect(barX, barY, barW, barH);
