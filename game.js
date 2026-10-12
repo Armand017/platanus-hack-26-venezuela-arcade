@@ -491,14 +491,31 @@ function rotatePiece(scene) {
       rotated[c][rows - 1 - r] = p.shape[r][c];
     }
   }
-  if (!checkCollision(scene, p, 0, 0, rotated)) {
-    p.shape = rotated;
-    if (scene.isLocking && scene.lockResets < 15) {
-      scene.lockTimer = 0;
-      scene.lockResets++;
+  
+  // Wall Kick offsets: try these in order until one works
+  const kicks = [
+    [0, 0],
+    [-1, 0], [1, 0],   // shift left/right
+    [0, -1],            // floor kick (lift up 1)
+    [-1, -1], [1, -1],  // diagonal kicks
+    [-2, 0], [2, 0],    // double shift
+    [-2, -1], [2, -1]
+  ];
+  
+  for (const [offsetX, offsetY] of kicks) {
+    if (!checkCollision(scene, p, offsetX, offsetY, rotated)) {
+      p.shape = rotated;
+      p.x += offsetX;
+      p.y += offsetY;
+      if (scene.isLocking && scene.lockResets < 15) {
+        scene.lockTimer = 0;
+        scene.lockResets++;
+      }
+      playSound('move');
+      return;
     }
-    playSound('move');
   }
+  // If no kick works, rotation is cancelled
 }
 
 function hardDrop(scene) {
