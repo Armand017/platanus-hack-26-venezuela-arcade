@@ -123,11 +123,11 @@ function create() {
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === '9') {
-      updateEnergy(scene, 50);
+      addEnergy(scene, 50);
       return;
     }
     if (k === '0') {
-      updateEnergy(scene, 100);
+      addEnergy(scene, 100 - scene.energy);
       return;
     }
     const code = KEYBOARD_TO_ARCADE[k];
@@ -156,9 +156,12 @@ function create() {
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
 }
 
-function updateEnergy(scene, newEnergy) {
+function addEnergy(scene, amount) {
   const oldEnergy = scene.energy;
-  scene.energy = Math.min(100, Math.max(0, newEnergy));
+  scene.energy = Math.min(100, Math.max(0, scene.energy + amount));
+  scene.energyGainAmount = amount;
+  scene.energyGainTimer = 300;
+
   if (oldEnergy < 100 && scene.energy >= 100) {
     playSound('powerup');
     const floatText = scene.add.text(80, 180, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
@@ -203,9 +206,13 @@ function resetGame(scene) {
   scene.combo = 0;
   scene.comboTimer = 0;
   scene.energy = 0; // 0 to 100
+  scene.energyDrainTarget = 0;
+  scene.energyGainTimer = 0;
+  scene.energyGainAmount = 0;
   scene.slowMoTimer = 0;
   scene.noComboGain = false;
   scene.glassBreakTimer = 0;
+  scene.glassAlpha = 1;
   scene.glassShards = [];
 
   scene.nextPiece = getRandomPiece(scene);
@@ -285,7 +292,7 @@ function clearLines(scene) {
   if (cleared > 0) {
     if (!scene.noComboGain) {
       scene.combo++;
-      updateEnergy(scene, scene.energy + cleared * 15);
+      addEnergy(scene, cleared * 15);
       if (scene.energy >= 100) {
         speak('MAXIMUM LEVEL!');
       } else if (scene.combo > 1) {
@@ -343,8 +350,22 @@ function hardDrop(scene) {
 function update(time, delta) {
   const scene = this;
 
+  // Energy draining for Level 3
+  if (scene.energy > scene.energyDrainTarget) {
+    scene.energy = Math.max(scene.energyDrainTarget, scene.energy - delta * 0.6);
+  }
+
   if (scene.glassBreakTimer > 0) {
     scene.glassBreakTimer -= delta;
+    if (scene.glassBreakTimer <= 0) {
+      scene.glassAlpha = 0;
+    }
+  } else if (scene.glassAlpha < 1) {
+    scene.glassAlpha = Math.min(1, scene.glassAlpha + delta / 300);
+  }
+
+  if (scene.energyGainTimer > 0) {
+    scene.energyGainTimer -= delta;
   }
 
   if (scene.gameOver) {
@@ -419,8 +440,9 @@ function update(time, delta) {
   if (scene.controls.pressed['P1_3']) {
     if (scene.energy >= 100) {
       // Level 3: Clear 4 lines & break energy jar
-      updateEnergy(scene, 0);
+      scene.energyDrainTarget = 0;
       scene.glassBreakTimer = 400;
+      scene.glassAlpha = 0;
       scene.glassShards = [];
       const barX = 70;
       const barY = 200;
@@ -465,12 +487,14 @@ function update(time, delta) {
       }
 
     } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
-      updateEnergy(scene, scene.energy - 66.66);
+      addEnergy(scene, -66.66);
+      scene.energyDrainTarget = scene.energy;
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
       playSound('move');
     } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
-      updateEnergy(scene, scene.energy - 33.33);
+      addEnergy(scene, -33.33);
+      scene.energyDrainTarget = scene.energy;
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
       spawnPiece(scene);
@@ -594,6 +618,14 @@ function update(time, delta) {
   scene.graphics.fillStyle(barColor, 1);
   scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
 
+  // Neon flash for newly added energy
+  if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0) {
+    const gainH = (scene.energyGainAmount / 100) * barH;
+    const currentH = (scene.energy / 100) * barH;
+    scene.graphics.fillStyle(0xffffff, 1);
+    scene.graphics.fillRect(barX, barY + (barH - currentH), barW, gainH);
+  }
+
   if (scene.glassBreakTimer > 0) {
     scene.graphics.lineStyle(2, Math.random() > 0.5 ? 0x00ffff : 0xffffff, 1);
     for (const shard of scene.glassShards) {
@@ -602,8 +634,10 @@ function update(time, delta) {
       const curY = shard.y + shard.dy * progress;
       scene.graphics.lineBetween(curX, curY, curX + shard.dx * 0.5, curY + shard.dy * 0.5);
     }
-  } else {
-    scene.graphics.lineStyle(2, 0xffffff, 1);
+  }
+
+  if (scene.glassAlpha > 0) {
+    scene.graphics.lineStyle(2, 0xffffff, scene.glassAlpha);
     scene.graphics.strokeRect(barX, barY, barW, barH);
   }
 }
