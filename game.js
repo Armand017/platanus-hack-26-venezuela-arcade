@@ -216,30 +216,19 @@ function triggerGameOver(scene, message) {
     return path;
   }
 
-  // 1 large impact point with 4 long paths
   const mainImpactX = barX + Math.random() * barW;
   const mainImpactY = barY + Math.random() * barH;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const segs = Phaser.Math.Between(10, 15);
+    const segs = Phaser.Math.Between(18, 22);
     const mainPath = createCrackPath(mainImpactX, mainImpactY, angle, segs);
     scene.crackPaths.push(mainPath);
 
-    if (Math.random() < 0.6) {
+    if (Math.random() < 0.5) {
       const midIdx = Phaser.Math.Between(2, Math.max(2, mainPath.length - 3));
       const branchAngle = angle + (Math.random() < 0.5 ? -1 : 1) * (Phaser.Math.Between(35, 75) * (Math.PI / 180));
-      scene.crackPaths.push(createCrackPath(mainPath[midIdx].x, mainPath[midIdx].y, branchAngle, Phaser.Math.Between(4, 7)));
+      scene.crackPaths.push(createCrackPath(mainPath[midIdx].x, mainPath[midIdx].y, branchAngle, Phaser.Math.Between(5, 8)));
     }
-  }
-
-  // Secondary impact points to reach total ~8-10 paths
-  const remainingNeeded = Phaser.Math.Between(8, 10) - scene.crackPaths.length;
-  for (let i = 0; i < remainingNeeded; i++) {
-    const startX = barX + Math.random() * barW;
-    const startY = barY + Math.random() * barH;
-    const angle = Math.random() * Math.PI * 2;
-    const segs = Phaser.Math.Between(10, 15);
-    scene.crackPaths.push(createCrackPath(startX, startY, angle, segs));
   }
 
   scene.sparkParticles = [];
