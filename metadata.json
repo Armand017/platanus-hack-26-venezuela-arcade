@@ -1,5 +1,5 @@
 {
-  "game_name": "Platanus Hack: Caracas Brick Breaker",
-  "description": "Batalla campal por romper la mayor cantidad de ladrillos",
-  "player_mode": "two_player"
+  "game_name": "Tetris Blitz: Turbo Edition",
+  "description": "Un Tetris arcade frenético, que estrena el sistema turbo combo, con superpoderes al estilo de los juegos de pelea de los 90",
+  "player_mode": "single_player"
 }
