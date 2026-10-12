@@ -463,165 +463,165 @@ function update(time, delta) {
     if (scene.controls.pressed['START1']) {
       scene.controls.pressed['START1'] = false;
       resetGame(scene);
+      return;
     }
     scene.controls.pressed = {};
-    return;
-  }
-
-  scene.timeLeft -= delta / 1000;
-  if (scene.timeLeft <= 0) {
-    scene.timeLeft = 0;
-    triggerGameOver(scene, 'TIME UP!\nPRESS START TO RESTART');
-    return;
-  }
-
-  const currentSec = Math.ceil(scene.timeLeft);
-  if (currentSec <= 5 && currentSec >= 0) {
-    if (currentSec !== scene.lastTickSecond) {
-      scene.lastTickSecond = currentSec;
-      playSound('tick');
+  } else {
+    scene.timeLeft -= delta / 1000;
+    if (scene.timeLeft <= 0) {
+      scene.timeLeft = 0;
+      triggerGameOver(scene, 'TIME UP!\nPRESS START TO RESTART');
+      return;
     }
-  }
 
-  scene.timerText.setText('TIME:\n' + currentSec);
+    const currentSec = Math.ceil(scene.timeLeft);
+    if (currentSec <= 5 && currentSec >= 0) {
+      if (currentSec !== scene.lastTickSecond) {
+        scene.lastTickSecond = currentSec;
+        playSound('tick');
+      }
+    }
 
-  if (scene.timeLeft < 5) {
-    scene.timerText.setStyle({ fill: '#ff0000' });
-    if (Math.floor(time / 200) % 2 === 0) {
-      scene.timerText.setAlpha(0.2);
+    scene.timerText.setText('TIME:\n' + currentSec);
+
+    if (scene.timeLeft < 5) {
+      scene.timerText.setStyle({ fill: '#ff0000' });
+      if (Math.floor(time / 200) % 2 === 0) {
+        scene.timerText.setAlpha(0.2);
+      } else {
+        scene.timerText.setAlpha(1);
+      }
+    } else if (scene.timeLeft < 10) {
+      scene.timerText.setStyle({ fill: '#ffff00' });
+      scene.timerText.setAlpha(1);
     } else {
+      scene.timerText.setStyle({ fill: '#ffffff' });
       scene.timerText.setAlpha(1);
     }
-  } else if (scene.timeLeft < 10) {
-    scene.timerText.setStyle({ fill: '#ffff00' });
-    scene.timerText.setAlpha(1);
-  } else {
-    scene.timerText.setStyle({ fill: '#ffffff' });
-    scene.timerText.setAlpha(1);
-  }
 
-  if (scene.combo > 0) {
-    scene.comboTimer -= delta;
-    if (scene.comboTimer <= 0) {
-      scene.combo = 0;
-      scene.comboText.setText('COMBO:\nx0');
-    }
-  }
-
-  if (scene.slowMoTimer > 0) {
-    scene.slowMoTimer -= delta;
-    if (scene.slowMoTimer <= 0) {
-      scene.noComboGain = false;
-    }
-  }
-
-  if (scene.controls.pressed['P1_1']) {
-    rotatePiece(scene);
-  }
-
-  if (scene.controls.pressed['P1_2']) {
-    hardDrop(scene);
-  }
-
-  if (scene.controls.pressed['P1_3']) {
-    if (scene.energy >= 100) {
-      // Level 3: Clear 4 lines & break energy jar
-      scene.isDraining = true;
-      scene.energyDrainTarget = 0;
-      scene.glassBreakTimer = 400;
-      scene.glassAlpha = 0;
-      scene.glassShards = [];
-      const barX = 70;
-      const barY = 200;
-      const barW = 20;
-      const barH = 150;
-      const shardCount = Phaser.Math.Between(8, 12);
-      for (let i = 0; i < shardCount; i++) {
-        const sx = barX + Math.random() * barW;
-        const sy = barY + Math.random() * barH;
-        const angle = Math.random() * Math.PI * 2;
-        const length = Phaser.Math.Between(5, 15);
-        scene.glassShards.push({
-          x: sx,
-          y: sy,
-          dx: Math.cos(angle) * length,
-          dy: Math.sin(angle) * length
-        });
+    if (scene.combo > 0) {
+      scene.comboTimer -= delta;
+      if (scene.comboTimer <= 0) {
+        scene.combo = 0;
+        scene.comboText.setText('COMBO:\nx0');
       }
-
-      for (let i = 0; i < 4; i++) {
-        scene.board.pop();
-        scene.board.unshift(Array(scene.boardWidth).fill(0));
-      }
-      scene.score += 500;
-      scene.scoreText.setText('SCORE:\n' + scene.score);
-      playSound('clear');
-      scene.cameras.main.shake(150, 0.025);
-
-      for (let i = 0; i < 20; i++) {
-        const px = 70 + Math.random() * 20;
-        const py = 200 + Math.random() * 150;
-        const p = scene.add.rectangle(px, py, 6, 6, 0xffff00);
-        scene.tweens.add({
-          targets: p,
-          x: px + (Math.random() - 0.5) * 80,
-          y: py + (Math.random() - 0.5) * 80,
-          alpha: 0,
-          scale: 0.2,
-          duration: 500,
-          onComplete: () => p.destroy()
-        });
-      }
-
-    } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
-      addEnergy(scene, -66.66);
-      scene.slowMoTimer = 3000;
-      scene.noComboGain = true;
-      playSound('move');
-    } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
-      addEnergy(scene, -33.33);
-      scene.combo = 0;
-      scene.comboText.setText('COMBO:\nx0');
-      spawnPiece(scene);
-      playSound('drop');
     }
-  }
 
-  if (time > scene.moveCooldown) {
-    if (scene.controls.held['P1_L']) {
-      if (!checkCollision(scene, scene.currentPiece, -1, 0)) {
-        scene.currentPiece.x--;
+    if (scene.slowMoTimer > 0) {
+      scene.slowMoTimer -= delta;
+      if (scene.slowMoTimer <= 0) {
+        scene.noComboGain = false;
+      }
+    }
+
+    if (scene.controls.pressed['P1_1']) {
+      rotatePiece(scene);
+    }
+
+    if (scene.controls.pressed['P1_2']) {
+      hardDrop(scene);
+    }
+
+    if (scene.controls.pressed['P1_3']) {
+      if (scene.energy >= 100) {
+        // Level 3: Clear 4 lines & break energy jar
+        scene.isDraining = true;
+        scene.energyDrainTarget = 0;
+        scene.glassBreakTimer = 400;
+        scene.glassAlpha = 0;
+        scene.glassShards = [];
+        const barX = 70;
+        const barY = 200;
+        const barW = 20;
+        const barH = 150;
+        const shardCount = Phaser.Math.Between(8, 12);
+        for (let i = 0; i < shardCount; i++) {
+          const sx = barX + Math.random() * barW;
+          const sy = barY + Math.random() * barH;
+          const angle = Math.random() * Math.PI * 2;
+          const length = Phaser.Math.Between(5, 15);
+          scene.glassShards.push({
+            x: sx,
+            y: sy,
+            dx: Math.cos(angle) * length,
+            dy: Math.sin(angle) * length
+          });
+        }
+
+        for (let i = 0; i < 4; i++) {
+          scene.board.pop();
+          scene.board.unshift(Array(scene.boardWidth).fill(0));
+        }
+        scene.score += 500;
+        scene.scoreText.setText('SCORE:\n' + scene.score);
+        playSound('clear');
+        scene.cameras.main.shake(150, 0.025);
+
+        for (let i = 0; i < 20; i++) {
+          const px = 70 + Math.random() * 20;
+          const py = 200 + Math.random() * 150;
+          const p = scene.add.rectangle(px, py, 6, 6, 0xffff00);
+          scene.tweens.add({
+            targets: p,
+            x: px + (Math.random() - 0.5) * 80,
+            y: py + (Math.random() - 0.5) * 80,
+            alpha: 0,
+            scale: 0.2,
+            duration: 500,
+            onComplete: () => p.destroy()
+          });
+        }
+
+      } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
+        addEnergy(scene, -66.66);
+        scene.slowMoTimer = 3000;
+        scene.noComboGain = true;
         playSound('move');
+      } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
+        addEnergy(scene, -33.33);
+        scene.combo = 0;
+        scene.comboText.setText('COMBO:\nx0');
+        spawnPiece(scene);
+        playSound('drop');
       }
-      scene.moveCooldown = time + 120;
     }
-    if (scene.controls.held['P1_R']) {
-      if (!checkCollision(scene, scene.currentPiece, 1, 0)) {
-        scene.currentPiece.x++;
-        playSound('move');
+
+    if (time > scene.moveCooldown) {
+      if (scene.controls.held['P1_L']) {
+        if (!checkCollision(scene, scene.currentPiece, -1, 0)) {
+          scene.currentPiece.x--;
+          playSound('move');
+        }
+        scene.moveCooldown = time + 120;
       }
-      scene.moveCooldown = time + 120;
+      if (scene.controls.held['P1_R']) {
+        if (!checkCollision(scene, scene.currentPiece, 1, 0)) {
+          scene.currentPiece.x++;
+          playSound('move');
+        }
+        scene.moveCooldown = time + 120;
+      }
     }
-  }
 
-  let dropSpeed = scene.slowMoTimer > 0 ? scene.dropInterval * 2 : scene.dropInterval;
-  if (scene.controls.held['P1_D']) {
-    dropSpeed = 50;
-  }
-
-  scene.dropTimer += delta;
-  if (scene.dropTimer > dropSpeed) {
-    scene.dropTimer = 0;
-    if (!checkCollision(scene, scene.currentPiece, 0, 1)) {
-      scene.currentPiece.y++;
-    } else {
-      mergePiece(scene);
-      clearLines(scene);
-      spawnPiece(scene);
+    let dropSpeed = scene.slowMoTimer > 0 ? scene.dropInterval * 2 : scene.dropInterval;
+    if (scene.controls.held['P1_D']) {
+      dropSpeed = 50;
     }
-  }
 
-  scene.controls.pressed = {};
+    scene.dropTimer += delta;
+    if (scene.dropTimer > dropSpeed) {
+      scene.dropTimer = 0;
+      if (!checkCollision(scene, scene.currentPiece, 0, 1)) {
+        scene.currentPiece.y++;
+      } else {
+        mergePiece(scene);
+        clearLines(scene);
+        spawnPiece(scene);
+      }
+    }
+
+    scene.controls.pressed = {};
+  }
 
   scene.graphics.clear();
   
