@@ -284,9 +284,13 @@ function resetGame(scene) {
 
   scene.score = 0;
   scene.dropTimer = 0;
-  scene.dropInterval = 600;
+  scene.dropInterval = 500;
   scene.gameOver = false;
   scene.moveCooldown = 0;
+
+  scene.lockTimer = 0;
+  scene.lockResets = 0;
+  scene.isLocking = false;
 
   scene.timeLeft = 60;
   scene.lastTickSecond = -1;
@@ -450,6 +454,10 @@ function rotatePiece(scene) {
   }
   if (!checkCollision(scene, p, 0, 0, rotated)) {
     p.shape = rotated;
+    if (scene.isLocking && scene.lockResets < 15) {
+      scene.lockTimer = 0;
+      scene.lockResets++;
+    }
     playSound('move');
   }
 }
@@ -473,7 +481,7 @@ function hardDrop(scene) {
         const cellStartY = startY + r;
         const cellEndY = endY + r;
         if (cellEndY > cellStartY) {
-          for (let row = cellStartY; row < cellEndY; row++) {
+          for (let row = cellStartY; row < cellEndY; row += 2) {
             const trail = scene.add.rectangle(
               scene.boardX + col * scene.tileSize + scene.tileSize / 2,
               scene.boardY + row * scene.tileSize + scene.tileSize / 2,
@@ -496,6 +504,32 @@ function hardDrop(scene) {
     }
   }
   
+  // Burst glow effect from piece edges
+  for (let r = 0; r < pieceShape.length; r++) {
+    for (let c = 0; c < pieceShape[r].length; c++) {
+      if (pieceShape[r][c]) {
+        const col = startX + c;
+        const row = endY + r;
+        const centerX = scene.boardX + col * scene.tileSize + scene.tileSize / 2;
+        const centerY = scene.boardY + row * scene.tileSize + scene.tileSize / 2;
+        const glow = scene.add.rectangle(
+          centerX, centerY,
+          scene.tileSize, scene.tileSize,
+          pieceColor, 0.8
+        ).setDepth(5);
+        scene.tweens.add({
+          targets: glow,
+          scaleX: 1.8,
+          scaleY: 1.8,
+          alpha: 0,
+          duration: 250,
+          ease: 'Cubic.easeOut',
+          onComplete: () => glow.destroy()
+        });
+      }
+    }
+  }
+
   mergePiece(scene);
   clearLines(scene);
   spawnPiece(scene);
@@ -708,6 +742,10 @@ function update(time, delta) {
       if (scene.controls.held['P1_L']) {
         if (!checkCollision(scene, scene.currentPiece, -1, 0)) {
           scene.currentPiece.x--;
+          if (scene.isLocking && scene.lockResets < 15) {
+            scene.lockTimer = 0;
+            scene.lockResets++;
+          }
           playSound('move');
         }
         scene.moveCooldown = time + 120;
@@ -715,6 +753,10 @@ function update(time, delta) {
       if (scene.controls.held['P1_R']) {
         if (!checkCollision(scene, scene.currentPiece, 1, 0)) {
           scene.currentPiece.x++;
+          if (scene.isLocking && scene.lockResets < 15) {
+            scene.lockTimer = 0;
+            scene.lockResets++;
+          }
           playSound('move');
         }
         scene.moveCooldown = time + 120;
@@ -731,10 +773,30 @@ function update(time, delta) {
       scene.dropTimer = 0;
       if (!checkCollision(scene, scene.currentPiece, 0, 1)) {
         scene.currentPiece.y++;
-      } else {
+        scene.isLocking = false;
+        scene.lockTimer = 0;
+      }
+    }
+
+    // Lock Delay logic
+    const canDrop = !checkCollision(scene, scene.currentPiece, 0, 1);
+    if (!canDrop && !scene.isLocking) {
+      scene.isLocking = true;
+      scene.lockTimer = 0;
+    } else if (canDrop) {
+      scene.isLocking = false;
+      scene.lockTimer = 0;
+    }
+
+    if (scene.isLocking) {
+      scene.lockTimer += delta;
+      if (scene.lockTimer >= 500 || scene.lockResets >= 15) {
         mergePiece(scene);
         clearLines(scene);
         spawnPiece(scene);
+        scene.isLocking = false;
+        scene.lockTimer = 0;
+        scene.lockResets = 0;
       }
     }
 
