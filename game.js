@@ -189,6 +189,55 @@ function triggerGameOver(scene, message) {
   scene.glassCracked = true;
   scene.glassCrackProgress = 0;
 
+  const barX = 70;
+  const barY = 200;
+  const barW = 20;
+  const barH = 150;
+  const minX = barX;
+  const maxX = barX + barW;
+  const minY = barY;
+  const maxY = barY + barH;
+
+  scene.crackPaths = [];
+  const impactCount = Phaser.Math.Between(3, 4);
+  const maxAngleChange = 40 * (Math.PI / 180);
+
+  function createCrackPath(startX, startY, baseAngle, segmentCount) {
+    const path = [{ x: startX, y: startY }];
+    let curX = startX;
+    let curY = startY;
+    let curAngle = baseAngle;
+    for (let s = 0; s < segmentCount; s++) {
+      curAngle += (Math.random() * 2 - 1) * maxAngleChange;
+      const len = Phaser.Math.Between(8, 15);
+      curX = Phaser.Math.Clamp(curX + Math.cos(curAngle) * len, minX, maxX);
+      curY = Phaser.Math.Clamp(curY + Math.sin(curAngle) * len, minY, maxY);
+      path.push({ x: curX, y: curY });
+    }
+    return path;
+  }
+
+  for (let i = 0; i < impactCount; i++) {
+    const startX = barX + Math.random() * barW;
+    const startY = barY + Math.random() * barH;
+    const pathCount = Phaser.Math.Between(2, 3);
+    for (let p = 0; p < pathCount; p++) {
+      const initialAngle = Math.random() * Math.PI * 2;
+      const segmentCount = Phaser.Math.Between(5, 8);
+      const mainPath = createCrackPath(startX, startY, initialAngle, segmentCount);
+      scene.crackPaths.push(mainPath);
+
+      const branchCount = Phaser.Math.Between(1, 2);
+      for (let b = 0; b < branchCount; b++) {
+        const midIdx = Phaser.Math.Between(1, Math.max(1, mainPath.length - 2));
+        const branchStart = mainPath[midIdx];
+        const branchAngle = initialAngle + (Math.random() < 0.5 ? -1 : 1) * (Phaser.Math.Between(30, 70) * (Math.PI / 180));
+        const branchPath = createCrackPath(branchStart.x, branchStart.y, branchAngle, Phaser.Math.Between(3, 4));
+        scene.crackPaths.push(branchPath);
+      }
+    }
+  }
+
   scene.sparkParticles = [];
   scene.sparksActive = true;
   for (let r = 0; r < scene.boardHeight; r++) {
@@ -260,6 +309,7 @@ function resetGame(scene) {
   scene.glassShards = [];
   scene.glassCracked = false;
   scene.glassCrackProgress = 0;
+  scene.crackPaths = null;
   scene.sparkParticles = [];
   scene.sparksActive = false;
 
@@ -434,7 +484,7 @@ function update(time, delta) {
   }
 
   if (scene.glassCracked) {
-    scene.glassCrackProgress = Math.min(1.0, scene.glassCrackProgress + delta / 1000);
+    scene.glassCrackProgress = Math.min(1.0, scene.glassCrackProgress + delta / 800);
   }
 
   // Energy draining for Level 3
@@ -729,14 +779,18 @@ function update(time, delta) {
     }
   }
 
-  if (scene.glassCracked) {
-    const centerX = barX + barW / 2;
-    const centerY = barY + barH / 2;
-    scene.graphics.lineStyle(2, 0xffffff, 0.8);
-    for (let i = 0; i < 7; i++) {
-      const angle = (i / 7) * Math.PI * 2 + 0.3;
-      const len = scene.glassCrackProgress * 15;
-      scene.graphics.lineBetween(centerX, centerY, centerX + Math.cos(angle) * len, centerY + Math.sin(angle) * len);
+  if (scene.glassCracked && scene.crackPaths) {
+    scene.graphics.lineStyle(1.5, 0xffffff, 0.9);
+    const progress = scene.glassCrackProgress;
+    for (const path of scene.crackPaths) {
+      for (let i = 0; i < path.length - 1; i++) {
+        const pointProgress = (i + 1) / path.length;
+        if (pointProgress > progress) break;
+        scene.graphics.lineBetween(
+          path[i].x, path[i].y,
+          path[i+1].x, path[i+1].y
+        );
+      }
     }
   }
 
