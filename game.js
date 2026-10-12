@@ -123,10 +123,12 @@ function create() {
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === '9') {
+      scene.isDraining = false;
       addEnergy(scene, 50);
       return;
     }
     if (k === '0') {
+      scene.isDraining = false;
       addEnergy(scene, 100 - scene.energy);
       return;
     }
@@ -210,6 +212,7 @@ function resetGame(scene) {
   scene.comboTimer = 0;
   scene.energy = 0; // 0 to 100
   scene.energyDrainTarget = 0;
+  scene.isDraining = false;
   scene.energyGainTimer = 0;
   scene.energyGainAmount = 0;
   scene.slowMoTimer = 0;
@@ -354,8 +357,12 @@ function update(time, delta) {
   const scene = this;
 
   // Energy draining for Level 3
-  if (scene.energy > scene.energyDrainTarget) {
+  if (scene.isDraining && scene.energy > scene.energyDrainTarget) {
     scene.energy = Math.max(scene.energyDrainTarget, scene.energy - delta * 0.6);
+    if (scene.energy <= scene.energyDrainTarget) {
+      scene.isDraining = false;
+      scene.energyDrainTarget = 0;
+    }
   }
 
   if (scene.glassBreakTimer > 0) {
@@ -443,8 +450,7 @@ function update(time, delta) {
   if (scene.controls.pressed['P1_3']) {
     if (scene.energy >= 100) {
       // Level 3: Clear 4 lines & break energy jar
-      scene.energyDrainTarget = 0;
-      scene.energy = 100;
+      scene.isDraining = true;
       scene.energyDrainTarget = 0;
       scene.glassBreakTimer = 400;
       scene.glassAlpha = 0;
@@ -492,12 +498,12 @@ function update(time, delta) {
       }
 
     } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
-      scene.energyDrainTarget = Math.max(0, scene.energy - 66.66);
+      addEnergy(scene, -66.66);
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
       playSound('move');
     } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
-      scene.energyDrainTarget = Math.max(0, scene.energy - 33.33);
+      addEnergy(scene, -33.33);
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
       spawnPiece(scene);
