@@ -199,8 +199,8 @@ function triggerGameOver(scene, message) {
   const maxY = barY + barH;
 
   scene.crackPaths = [];
-  const impactCount = Phaser.Math.Between(3, 4);
-  const maxAngleChange = 40 * (Math.PI / 180);
+  const impactCount = Phaser.Math.Between(5, 6);
+  const maxAngleChange = 60 * (Math.PI / 180);
 
   function createCrackPath(startX, startY, baseAngle, segmentCount) {
     const path = [{ x: startX, y: startY }];
@@ -209,7 +209,7 @@ function triggerGameOver(scene, message) {
     let curAngle = baseAngle;
     for (let s = 0; s < segmentCount; s++) {
       curAngle += (Math.random() * 2 - 1) * maxAngleChange;
-      const len = Phaser.Math.Between(8, 15);
+      const len = Phaser.Math.Between(5, 10);
       curX = Phaser.Math.Clamp(curX + Math.cos(curAngle) * len, minX, maxX);
       curY = Phaser.Math.Clamp(curY + Math.sin(curAngle) * len, minY, maxY);
       path.push({ x: curX, y: curY });
@@ -220,19 +220,19 @@ function triggerGameOver(scene, message) {
   for (let i = 0; i < impactCount; i++) {
     const startX = barX + Math.random() * barW;
     const startY = barY + Math.random() * barH;
-    const pathCount = Phaser.Math.Between(2, 3);
+    const pathCount = 3;
     for (let p = 0; p < pathCount; p++) {
       const initialAngle = Math.random() * Math.PI * 2;
       const segmentCount = Phaser.Math.Between(5, 8);
       const mainPath = createCrackPath(startX, startY, initialAngle, segmentCount);
       scene.crackPaths.push(mainPath);
 
-      const branchCount = Phaser.Math.Between(1, 2);
+      const branchCount = Phaser.Math.Between(2, 3);
       for (let b = 0; b < branchCount; b++) {
         const midIdx = Phaser.Math.Between(1, Math.max(1, mainPath.length - 2));
         const branchStart = mainPath[midIdx];
         const branchAngle = initialAngle + (Math.random() < 0.5 ? -1 : 1) * (Phaser.Math.Between(30, 70) * (Math.PI / 180));
-        const branchPath = createCrackPath(branchStart.x, branchStart.y, branchAngle, Phaser.Math.Between(3, 4));
+        const branchPath = createCrackPath(branchStart.x, branchStart.y, branchAngle, Phaser.Math.Between(2, 4));
         scene.crackPaths.push(branchPath);
       }
     }
@@ -780,7 +780,7 @@ function update(time, delta) {
   }
 
   if (scene.glassCracked && scene.crackPaths) {
-    scene.graphics.lineStyle(1.5, 0xffffff, 0.9);
+    scene.graphics.lineStyle(1, 0xffffff, 0.85);
     const progress = scene.glassCrackProgress;
     for (const path of scene.crackPaths) {
       for (let i = 0; i < path.length - 1; i++) {
