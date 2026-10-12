@@ -210,6 +210,8 @@ function triggerGameOver(scene, message) {
       }
     }
   }
+
+  scene.board = Array(scene.boardHeight).fill(0).map(() => Array(scene.boardWidth).fill(0));
 }
 
 function resetGame(scene) {
