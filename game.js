@@ -180,6 +180,38 @@ function addEnergy(scene, amount) {
   }
 }
 
+function triggerGameOver(scene, message) {
+  if (scene.gameOver) return;
+  scene.gameOver = true;
+  scene.gameOverText.setText(message);
+  speak('GAME OVER');
+
+  scene.glassCracked = true;
+  scene.glassCrackProgress = 0;
+
+  scene.sparkParticles = [];
+  scene.sparksActive = true;
+  for (let r = 0; r < scene.boardHeight; r++) {
+    for (let c = 0; c < scene.boardWidth; c++) {
+      if (scene.board[r][c]) {
+        const color = scene.board[r][c];
+        const cellCenterX = scene.boardX + c * scene.tileSize + scene.tileSize / 2;
+        const cellCenterY = scene.boardY + r * scene.tileSize + scene.tileSize / 2;
+        for (let i = 0; i < 3; i++) {
+          const rect = scene.add.rectangle(cellCenterX, cellCenterY, 3, 3, color);
+          scene.sparkParticles.push({
+            obj: rect,
+            vx: (Math.random() - 0.5) * 160,
+            vy: -Math.random() * 100 - 50,
+            life: Math.random() * 800 + 1200,
+            age: 0
+          });
+        }
+      }
+    }
+  }
+}
+
 function resetGame(scene) {
   scene.boardWidth = 10;
   scene.boardHeight = 20;
@@ -220,6 +252,10 @@ function resetGame(scene) {
   scene.glassBreakTimer = 0;
   scene.glassAlpha = 1;
   scene.glassShards = [];
+  scene.glassCracked = false;
+  scene.glassCrackProgress = 0;
+  scene.sparkParticles = [];
+  scene.sparksActive = false;
 
   scene.nextPiece = getRandomPiece(scene);
   spawnPiece(scene);
@@ -249,9 +285,7 @@ function spawnPiece(scene) {
   scene.nextPiece = getRandomPiece(scene);
 
   if (checkCollision(scene, scene.currentPiece, 0, 0)) {
-    scene.gameOver = true;
-    scene.gameOverText.setText('GAME OVER\nPRESS START TO RESTART');
-    speak('GAME OVER');
+    triggerGameOver(scene, 'GAME OVER\nPRESS START TO RESTART');
   }
 }
 
@@ -356,6 +390,47 @@ function hardDrop(scene) {
 function update(time, delta) {
   const scene = this;
 
+  if (scene.sparksActive) {
+    for (let i = scene.sparkParticles.length - 1; i >= 0; i--) {
+      const p = scene.sparkParticles[i];
+      p.vy += 400 * (delta / 1000);
+      p.obj.x += p.vx * (delta / 1000);
+      p.obj.y += p.vy * (delta / 1000);
+
+      const minX = scene.boardX;
+      const maxX = scene.boardX + scene.boardWidth * scene.tileSize;
+      const minY = scene.boardY;
+      const maxY = scene.boardY + scene.boardHeight * scene.tileSize;
+
+      if (p.obj.x <= minX || p.obj.x >= maxX) {
+        p.vx *= -0.6;
+        p.obj.x = Phaser.Math.Clamp(p.obj.x, minX, maxX);
+      }
+      if (p.obj.y >= maxY) {
+        p.vy *= -0.6;
+        p.vx *= 0.95;
+        p.obj.y = maxY;
+      }
+      if (p.obj.y < minY) {
+        p.vy *= -0.6;
+        p.obj.y = minY;
+      }
+
+      p.age += delta;
+      if (p.age >= p.life) {
+        p.obj.destroy();
+        scene.sparkParticles.splice(i, 1);
+      }
+    }
+    if (scene.sparkParticles.length === 0) {
+      scene.sparksActive = false;
+    }
+  }
+
+  if (scene.glassCracked) {
+    scene.glassCrackProgress = Math.min(1.0, scene.glassCrackProgress + delta / 1000);
+  }
+
   // Energy draining for Level 3
   if (scene.isDraining && scene.energy > scene.energyDrainTarget) {
     scene.energy = Math.max(scene.energyDrainTarget, scene.energy - delta * 0.6);
@@ -390,12 +465,7 @@ function update(time, delta) {
   scene.timeLeft -= delta / 1000;
   if (scene.timeLeft <= 0) {
     scene.timeLeft = 0;
-    scene.gameOver = true;
-    scene.timerText.setText('TIME:\n0');
-    scene.timerText.setStyle({ fill: '#ff0000' });
-    scene.timerText.setAlpha(1);
-    scene.gameOverText.setText('TIME UP!\nPRESS START TO RESTART');
-    speak('GAME OVER');
+    triggerGameOver(scene, 'TIME UP!\nPRESS START TO RESTART');
     return;
   }
 
@@ -554,13 +624,13 @@ function update(time, delta) {
   
   for (let r = 0; r < scene.boardHeight; r++) {
     for (let c = 0; c < scene.boardWidth; c++) {
-      if (scene.board[r][c]) {
+      if (scene.board[r][c] && !scene.gameOver) {
         drawTile(scene.graphics, scene.boardX + c * scene.tileSize, scene.boardY + r * scene.tileSize, scene.tileSize, scene.board[r][c]);
       }
     }
   }
 
-  if (scene.currentPiece) {
+  if (scene.currentPiece && !scene.gameOver) {
     const p = scene.currentPiece;
     
     // Ghost Piece
@@ -587,7 +657,7 @@ function update(time, delta) {
   }
 
   // Next Piece Preview
-  if (scene.nextPiece) {
+  if (scene.nextPiece && !scene.gameOver) {
     const np = scene.nextPiece;
     const previewX = 700;
     const previewY = 280;
@@ -615,7 +685,7 @@ function update(time, delta) {
   scene.graphics.fillStyle(0x222244, 1);
   scene.graphics.fillRect(barX, barY, barW, barH);
   
-  const fillH = (scene.energy / 100) * barH;
+  let fillH = (scene.energy / 100) * barH;
   let barColor = scene.energy >= 66.66 ? 0x00ffff : 0xffaa00;
   if (scene.energy >= 100) {
     if (Math.floor(time / 200) % 2 === 0) {
@@ -624,11 +694,17 @@ function update(time, delta) {
       barColor = 0x00ff00;
     }
   }
+
+  if (scene.glassCracked) {
+    const interp = Phaser.Math.Interpolation.Linear([barColor, 0x333333], scene.glassCrackProgress);
+    barColor = Math.floor(interp);
+  }
+
   scene.graphics.fillStyle(barColor, 1);
   scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
 
   // Neon flash for newly added energy
-  if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0) {
+  if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0 && !scene.glassCracked) {
     const gainH = (scene.energyGainAmount / 100) * barH;
     const topOfNewBlock = barY + barH - (scene.energy / 100) * barH;
     scene.graphics.fillStyle(0xffffff, 1);
@@ -642,6 +718,17 @@ function update(time, delta) {
       const curX = shard.x + shard.dx * progress;
       const curY = shard.y + shard.dy * progress;
       scene.graphics.lineBetween(curX, curY, curX + shard.dx * 0.5, curY + shard.dy * 0.5);
+    }
+  }
+
+  if (scene.glassCracked) {
+    const centerX = barX + barW / 2;
+    const centerY = barY + barH / 2;
+    scene.graphics.lineStyle(2, 0xffffff, 0.8);
+    for (let i = 0; i < 7; i++) {
+      const angle = (i / 7) * Math.PI * 2 + 0.3;
+      const len = scene.glassCrackProgress * 15;
+      scene.graphics.lineBetween(centerX, centerY, centerX + Math.cos(angle) * len, centerY + Math.sin(angle) * len);
     }
   }
 
