@@ -65,6 +65,13 @@ function playSound(type) {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
+    } else if (type === 'tick') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.02);
     } else if (type === 'clear') {
       const bufferSize = ctx.sampleRate * 0.15;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -166,6 +173,7 @@ function resetGame(scene) {
   scene.moveCooldown = 0;
 
   scene.timeLeft = 60;
+  scene.lastTickSecond = -1;
   scene.combo = 0;
   scene.comboTimer = 0;
   scene.energy = 0; // 0 to 100
@@ -176,7 +184,11 @@ function resetGame(scene) {
   spawnPiece(scene);
 
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
-  if (scene.timerText) scene.timerText.setText('TIME:\n60');
+  if (scene.timerText) {
+    scene.timerText.setText('TIME:\n60');
+    scene.timerText.setStyle({ fill: '#fff' });
+    scene.timerText.setAlpha(1);
+  }
   if (scene.comboText) scene.comboText.setText('COMBO:\nx0');
   if (scene.gameOverText) scene.gameOverText.setText('');
 }
@@ -316,11 +328,38 @@ function update(time, delta) {
   if (scene.timeLeft <= 0) {
     scene.timeLeft = 0;
     scene.gameOver = true;
+    scene.timerText.setText('TIME:\n0');
+    scene.timerText.setStyle({ fill: '#ff0000' });
+    scene.timerText.setAlpha(1);
     scene.gameOverText.setText('TIME UP!\nPRESS START TO RESTART');
     speak('GAME OVER');
     return;
   }
-  scene.timerText.setText('TIME:\n' + Math.ceil(scene.timeLeft));
+
+  const currentSec = Math.ceil(scene.timeLeft);
+  if (currentSec <= 5 && currentSec >= 0) {
+    if (currentSec !== scene.lastTickSecond) {
+      scene.lastTickSecond = currentSec;
+      playSound('tick');
+    }
+  }
+
+  scene.timerText.setText('TIME:\n' + currentSec);
+
+  if (scene.timeLeft < 5) {
+    scene.timerText.setStyle({ fill: '#ff0000' });
+    if (Math.floor(time / 200) % 2 === 0) {
+      scene.timerText.setAlpha(0.2);
+    } else {
+      scene.timerText.setAlpha(1);
+    }
+  } else if (scene.timeLeft < 10) {
+    scene.timerText.setStyle({ fill: '#ffff00' });
+    scene.timerText.setAlpha(1);
+  } else {
+    scene.timerText.setStyle({ fill: '#ffffff' });
+    scene.timerText.setAlpha(1);
+  }
 
   if (scene.combo > 0) {
     scene.comboTimer -= delta;
