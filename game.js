@@ -33,6 +33,69 @@ for (const [arcadeCode, keys] of Object.entries(CABINET_KEYS)) {
   }
 }
 
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+function playSound(type) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'move') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.05);
+    } else if (type === 'drop') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } else if (type === 'clear') {
+      // Noise burst for explosion
+      const bufferSize = ctx.sampleRate * 0.15;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.15, ctx.currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      noise.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start();
+    }
+  } catch (e) {}
+}
+
+function speak(text) {
+  try {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.2;
+      utterance.pitch = 1.1;
+      window.speechSynthesis.speak(utterance);
+    }
+  } catch (e) {}
+}
+
 new Phaser.Game(config);
 
 function preload() {}
@@ -127,6 +190,7 @@ function spawnPiece(scene) {
   if (checkCollision(scene, scene.currentPiece, 0, 0)) {
     scene.gameOver = true;
     scene.gameOverText.setText('GAME OVER\nPRESS START TO RESTART');
+    speak('GAME OVER');
   }
 }
 
@@ -174,11 +238,32 @@ function clearLines(scene) {
     if (!scene.noComboGain) {
       scene.combo++;
       scene.energy = Math.min(100, scene.energy + cleared * 15);
+      if (scene.energy >= 100) {
+        speak('MAXIMUM LEVEL!');
+      } else if (scene.combo > 1) {
+        speak('COMBO!');
+      }
     }
     scene.comboTimer = 3000;
     scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
     scene.scoreText.setText('SCORE:\n' + scene.score);
     scene.comboText.setText('COMBO:\nx' + scene.combo);
+
+    playSound('clear');
+
+    // Screen Shake
+    const shakeIntensity = cleared === 4 ? 0.02 : 0.01;
+    scene.cameras.main.shake(100, shakeIntensity);
+
+    // Floating text
+    const floatText = scene.add.text(scene.boardX + scene.boardWidth * scene.tileSize / 2, scene.boardY + 200, `+${cleared * 100}` + (scene.combo > 1 ? ` x${scene.combo}` : ''), { fontSize: '20px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+    scene.tweens.add({
+      targets: floatText,
+      y: floatText.y - 50,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => floatText.destroy()
+    });
   }
 }
 
@@ -194,6 +279,7 @@ function rotatePiece(scene) {
   }
   if (!checkCollision(scene, p, 0, 0, rotated)) {
     p.shape = rotated;
+    playSound('move');
   }
 }
 
@@ -204,6 +290,8 @@ function hardDrop(scene) {
   mergePiece(scene);
   clearLines(scene);
   spawnPiece(scene);
+  playSound('drop');
+  scene.cameras.main.shake(80, 0.015);
 }
 
 function update(time, delta) {
@@ -224,6 +312,7 @@ function update(time, delta) {
     scene.timeLeft = 0;
     scene.gameOver = true;
     scene.gameOverText.setText('TIME UP!\nPRESS START TO RESTART');
+    speak('GAME OVER');
     return;
   }
   scene.timerText.setText('TIME:\n' + Math.ceil(scene.timeLeft));
@@ -266,27 +355,37 @@ function update(time, delta) {
       }
       scene.score += 500;
       scene.scoreText.setText('SCORE:\n' + scene.score);
+      playSound('clear');
+      scene.cameras.main.shake(150, 0.025);
     } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
       // Level 2: SlowMo
       scene.energy -= 66.66;
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
+      playSound('move');
     } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
       // Level 1: Destroy piece
       scene.energy -= 33.33;
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
       spawnPiece(scene);
+      playSound('drop');
     }
   }
 
   if (time > scene.moveCooldown) {
     if (scene.controls.held['P1_L']) {
-      if (!checkCollision(scene, scene.currentPiece, -1, 0)) scene.currentPiece.x--;
+      if (!checkCollision(scene, scene.currentPiece, -1, 0)) {
+        scene.currentPiece.x--;
+        playSound('move');
+      }
       scene.moveCooldown = time + 120;
     }
     if (scene.controls.held['P1_R']) {
-      if (!checkCollision(scene, scene.currentPiece, 1, 0)) scene.currentPiece.x++;
+      if (!checkCollision(scene, scene.currentPiece, 1, 0)) {
+        scene.currentPiece.x++;
+        playSound('move');
+      }
       scene.moveCooldown = time + 120;
     }
   }
@@ -345,7 +444,16 @@ function update(time, delta) {
   scene.graphics.fillRect(barX, barY, barW, barH);
   
   const fillH = (scene.energy / 100) * barH;
-  scene.graphics.fillStyle(scene.energy >= 100 ? 0x00ff00 : (scene.energy >= 66.66 ? 0x00ffff : 0xffaa00), 1);
+  let barColor = scene.energy >= 66.66 ? 0x00ffff : 0xffaa00;
+  if (scene.energy >= 100) {
+    // Flash bright yellow if full
+    if (Math.floor(time / 200) % 2 === 0) {
+      barColor = 0xffff00;
+    } else {
+      barColor = 0x00ff00;
+    }
+  }
+  scene.graphics.fillStyle(barColor, 1);
   scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
   scene.graphics.lineStyle(2, 0xffffff, 1);
   scene.graphics.strokeRect(barX, barY, barW, barH);
