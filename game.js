@@ -72,6 +72,16 @@ function playSound(type) {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02);
       osc.start();
       osc.stop(ctx.currentTime + 0.02);
+    } else if (type === 'powerup') {
+      osc.type = 'square';
+      const now = ctx.currentTime;
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.setValueAtTime(600, now + 0.08);
+      osc.frequency.setValueAtTime(900, now + 0.16);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.start();
+      osc.stop(now + 0.3);
     } else if (type === 'clear') {
       const bufferSize = ctx.sampleRate * 0.15;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -113,11 +123,11 @@ function create() {
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === '9') {
-      scene.energy = 50;
+      updateEnergy(scene, 50);
       return;
     }
     if (k === '0') {
-      scene.energy = 100;
+      updateEnergy(scene, 100);
       return;
     }
     const code = KEYBOARD_TO_ARCADE[k];
@@ -144,6 +154,22 @@ function create() {
 
   scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
+}
+
+function updateEnergy(scene, newEnergy) {
+  const oldEnergy = scene.energy;
+  scene.energy = Math.min(100, Math.max(0, newEnergy));
+  if (oldEnergy < 100 && scene.energy >= 100) {
+    playSound('powerup');
+    const floatText = scene.add.text(80, 180, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+    scene.tweens.add({
+      targets: floatText,
+      y: floatText.y - 40,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => floatText.destroy()
+    });
+  }
 }
 
 function resetGame(scene) {
@@ -257,7 +283,7 @@ function clearLines(scene) {
   if (cleared > 0) {
     if (!scene.noComboGain) {
       scene.combo++;
-      scene.energy = Math.min(100, scene.energy + cleared * 15);
+      updateEnergy(scene, scene.energy + cleared * 15);
       if (scene.energy >= 100) {
         speak('MAXIMUM LEVEL!');
       } else if (scene.combo > 1) {
@@ -266,7 +292,7 @@ function clearLines(scene) {
     }
     scene.comboTimer = 3000;
     scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
-    scene.scoreText.setText('SCORE:\n' + scene.score);
+    scene.scoreText.setText('SCORE:\n0' === scene.scoreText.text ? 'SCORE:\n' + scene.score : 'SCORE:\n' + scene.score);
     scene.comboText.setText('COMBO:\nx' + scene.combo);
 
     playSound('clear');
@@ -386,7 +412,8 @@ function update(time, delta) {
 
   if (scene.controls.pressed['P1_3']) {
     if (scene.energy >= 100) {
-      scene.energy = 0;
+      // Level 3: Clear 4 lines & break energy jar
+      updateEnergy(scene, 0);
       for (let i = 0; i < 4; i++) {
         scene.board.pop();
         scene.board.unshift(Array(scene.boardWidth).fill(0));
@@ -395,13 +422,30 @@ function update(time, delta) {
       scene.scoreText.setText('SCORE:\n' + scene.score);
       playSound('clear');
       scene.cameras.main.shake(150, 0.025);
+
+      // Particle explosion around the jar (barX=70, barY=200, barW=20, barH=150)
+      for (let i = 0; i < 20; i++) {
+        const px = 70 + Math.random() * 20;
+        const py = 200 + Math.random() * 150;
+        const p = scene.add.rectangle(px, py, 6, 6, 0xffff00);
+        scene.tweens.add({
+          targets: p,
+          x: px + (Math.random() - 0.5) * 80,
+          y: py + (Math.random() - 0.5) * 80,
+          alpha: 0,
+          scale: 0.2,
+          duration: 500,
+          onComplete: () => p.destroy()
+        });
+      }
+
     } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
-      scene.energy -= 66.66;
+      updateEnergy(scene, scene.energy - 66.66);
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
       playSound('move');
     } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
-      scene.energy -= 33.33;
+      updateEnergy(scene, scene.energy - 33.33);
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
       spawnPiece(scene);
