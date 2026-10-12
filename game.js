@@ -159,8 +159,11 @@ function create() {
 function addEnergy(scene, amount) {
   const oldEnergy = scene.energy;
   scene.energy = Math.min(100, Math.max(0, scene.energy + amount));
-  scene.energyGainAmount = amount;
-  scene.energyGainTimer = 300;
+  
+  if (amount > 0) {
+    scene.energyGainAmount = amount;
+    scene.energyGainTimer = 300;
+  }
 
   if (oldEnergy < 100 && scene.energy >= 100) {
     playSound('powerup');
@@ -441,6 +444,8 @@ function update(time, delta) {
     if (scene.energy >= 100) {
       // Level 3: Clear 4 lines & break energy jar
       scene.energyDrainTarget = 0;
+      scene.energy = 100;
+      scene.energyDrainTarget = 0;
       scene.glassBreakTimer = 400;
       scene.glassAlpha = 0;
       scene.glassShards = [];
@@ -487,14 +492,12 @@ function update(time, delta) {
       }
 
     } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
-      addEnergy(scene, -66.66);
-      scene.energyDrainTarget = scene.energy;
+      scene.energyDrainTarget = Math.max(0, scene.energy - 66.66);
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
       playSound('move');
     } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
-      addEnergy(scene, -33.33);
-      scene.energyDrainTarget = scene.energy;
+      scene.energyDrainTarget = Math.max(0, scene.energy - 33.33);
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
       spawnPiece(scene);
@@ -621,9 +624,9 @@ function update(time, delta) {
   // Neon flash for newly added energy
   if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0) {
     const gainH = (scene.energyGainAmount / 100) * barH;
-    const currentH = (scene.energy / 100) * barH;
+    const topOfNewBlock = barY + barH - (scene.energy / 100) * barH;
     scene.graphics.fillStyle(0xffffff, 1);
-    scene.graphics.fillRect(barX, barY + (barH - currentH), barW, gainH);
+    scene.graphics.fillRect(barX, topOfNewBlock, barW, gainH);
   }
 
   if (scene.glassBreakTimer > 0) {
