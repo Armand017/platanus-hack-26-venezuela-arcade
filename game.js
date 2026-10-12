@@ -205,6 +205,8 @@ function resetGame(scene) {
   scene.energy = 0; // 0 to 100
   scene.slowMoTimer = 0;
   scene.noComboGain = false;
+  scene.glassBreakTimer = 0;
+  scene.glassShards = [];
 
   scene.nextPiece = getRandomPiece(scene);
   spawnPiece(scene);
@@ -292,7 +294,7 @@ function clearLines(scene) {
     }
     scene.comboTimer = 3000;
     scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
-    scene.scoreText.setText('SCORE:\n0' === scene.scoreText.text ? 'SCORE:\n' + scene.score : 'SCORE:\n' + scene.score);
+    scene.scoreText.setText('SCORE:\n' + scene.score);
     scene.comboText.setText('COMBO:\nx' + scene.combo);
 
     playSound('clear');
@@ -340,6 +342,10 @@ function hardDrop(scene) {
 
 function update(time, delta) {
   const scene = this;
+
+  if (scene.glassBreakTimer > 0) {
+    scene.glassBreakTimer -= delta;
+  }
 
   if (scene.gameOver) {
     if (scene.controls.pressed['START1']) {
@@ -414,6 +420,26 @@ function update(time, delta) {
     if (scene.energy >= 100) {
       // Level 3: Clear 4 lines & break energy jar
       updateEnergy(scene, 0);
+      scene.glassBreakTimer = 400;
+      scene.glassShards = [];
+      const barX = 70;
+      const barY = 200;
+      const barW = 20;
+      const barH = 150;
+      const shardCount = Phaser.Math.Between(8, 12);
+      for (let i = 0; i < shardCount; i++) {
+        const sx = barX + Math.random() * barW;
+        const sy = barY + Math.random() * barH;
+        const angle = Math.random() * Math.PI * 2;
+        const length = Phaser.Math.Between(5, 15);
+        scene.glassShards.push({
+          x: sx,
+          y: sy,
+          dx: Math.cos(angle) * length,
+          dy: Math.sin(angle) * length
+        });
+      }
+
       for (let i = 0; i < 4; i++) {
         scene.board.pop();
         scene.board.unshift(Array(scene.boardWidth).fill(0));
@@ -423,7 +449,6 @@ function update(time, delta) {
       playSound('clear');
       scene.cameras.main.shake(150, 0.025);
 
-      // Particle explosion around the jar (barX=70, barY=200, barW=20, barH=150)
       for (let i = 0; i < 20; i++) {
         const px = 70 + Math.random() * 20;
         const py = 200 + Math.random() * 150;
@@ -568,8 +593,19 @@ function update(time, delta) {
   }
   scene.graphics.fillStyle(barColor, 1);
   scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
-  scene.graphics.lineStyle(2, 0xffffff, 1);
-  scene.graphics.strokeRect(barX, barY, barW, barH);
+
+  if (scene.glassBreakTimer > 0) {
+    scene.graphics.lineStyle(2, Math.random() > 0.5 ? 0x00ffff : 0xffffff, 1);
+    for (const shard of scene.glassShards) {
+      const progress = 1 - (scene.glassBreakTimer / 400);
+      const curX = shard.x + shard.dx * progress;
+      const curY = shard.y + shard.dy * progress;
+      scene.graphics.lineBetween(curX, curY, curX + shard.dx * 0.5, curY + shard.dy * 0.5);
+    }
+  } else {
+    scene.graphics.lineStyle(2, 0xffffff, 1);
+    scene.graphics.strokeRect(barX, barY, barW, barH);
+  }
 }
 
 function drawTile(g, x, y, size, color, alpha = 1.0) {
