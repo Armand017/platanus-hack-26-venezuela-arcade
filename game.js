@@ -201,9 +201,9 @@ function triggerGameOver(scene, message) {
           const rect = scene.add.rectangle(cellCenterX, cellCenterY, 3, 3, color);
           scene.sparkParticles.push({
             obj: rect,
-            vx: (Math.random() - 0.5) * 160,
-            vy: -Math.random() * 100 - 50,
-            life: Math.random() * 800 + 1200,
+            vx: (Math.random() - 0.5) * 160 * 1.4,
+            vy: (-Math.random() * 100 - 50) * 1.4,
+            life: Math.random() * 1100 + 1700,
             age: 0
           });
         }
@@ -211,7 +211,11 @@ function triggerGameOver(scene, message) {
     }
   }
 
-  scene.board = Array(scene.boardHeight).fill(0).map(() => Array(scene.boardWidth).fill(0));
+  for (let r = 0; r < scene.boardHeight; r++) {
+    for (let c = 0; c < scene.boardWidth; c++) {
+      scene.board[r][c] = 0;
+    }
+  }
 }
 
 function resetGame(scene) {
@@ -405,16 +409,16 @@ function update(time, delta) {
       const maxY = scene.boardY + scene.boardHeight * scene.tileSize;
 
       if (p.obj.x <= minX || p.obj.x >= maxX) {
-        p.vx *= -0.6;
+        p.vx *= -0.85;
         p.obj.x = Phaser.Math.Clamp(p.obj.x, minX, maxX);
       }
       if (p.obj.y >= maxY) {
-        p.vy *= -0.6;
+        p.vy *= -0.85;
         p.vx *= 0.95;
         p.obj.y = maxY;
       }
       if (p.obj.y < minY) {
-        p.vy *= -0.6;
+        p.vy *= -0.85;
         p.obj.y = minY;
       }
 
@@ -698,8 +702,10 @@ function update(time, delta) {
   }
 
   if (scene.glassCracked) {
-    const interp = Phaser.Math.Interpolation.Linear([barColor, 0x333333], scene.glassCrackProgress);
-    barColor = Math.floor(interp);
+    const c1 = Phaser.Display.Color.ValueToColor(barColor);
+    const c2 = new Phaser.Display.Color(51, 51, 51);
+    const interpolated = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, Math.min(100, scene.glassCrackProgress * 100));
+    barColor = Phaser.Display.Color.GetColor(interpolated.r, interpolated.g, interpolated.b);
   }
 
   scene.graphics.fillStyle(barColor, 1);
