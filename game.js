@@ -284,7 +284,7 @@ function resetGame(scene) {
 
   scene.score = 0;
   scene.dropTimer = 0;
-  scene.dropInterval = 500;
+  scene.dropInterval = 600;
   scene.gameOver = false;
   scene.moveCooldown = 0;
 
@@ -407,12 +407,32 @@ function clearLines(scene) {
     const shakeIntensity = cleared === 4 ? 0.02 : 0.01;
     scene.cameras.main.shake(100, shakeIntensity);
 
-    const floatText = scene.add.text(scene.boardX + scene.boardWidth * scene.tileSize / 2, scene.boardY + 200, `+${cleared * 100}` + (scene.combo > 1 ? ` x${scene.combo}` : ''), { fontSize: '20px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+    const fontSize = Math.min(52, 22 + scene.combo * 3);
+    let textColor = '#ffff00';
+    if (scene.combo >= 10) textColor = '#ff00ff';
+    else if (scene.combo >= 7) textColor = '#00ffff';
+    else if (scene.combo >= 5) textColor = '#00ff00';
+    else if (scene.combo >= 3) textColor = '#ffaa00';
+
+    const floatText = scene.add.text(
+      scene.boardX + scene.boardWidth * scene.tileSize / 2,
+      scene.boardY + scene.boardHeight * scene.tileSize / 2,
+      `+${cleared * 100 * scene.combo}` + (scene.combo > 1 ? ` x${scene.combo}` : ''),
+      {
+        fontSize: fontSize + 'px',
+        fill: textColor,
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 5
+      }
+    ).setOrigin(0.5).setDepth(100);
     scene.tweens.add({
       targets: floatText,
-      y: floatText.y - 50,
+      y: floatText.y - 80,
+      scale: 1.3,
       alpha: 0,
-      duration: 800,
+      duration: 1000,
+      ease: 'Cubic.easeOut',
       onComplete: () => floatText.destroy()
     });
   }
@@ -435,9 +455,47 @@ function rotatePiece(scene) {
 }
 
 function hardDrop(scene) {
+  const startY = scene.currentPiece.y;
+  const startX = scene.currentPiece.x;
+  const pieceShape = scene.currentPiece.shape;
+  const pieceColor = scene.currentPiece.color;
+  
   while (!checkCollision(scene, scene.currentPiece, 0, 1)) {
     scene.currentPiece.y++;
   }
+  const endY = scene.currentPiece.y;
+  
+  // Trail cascade effect
+  for (let r = 0; r < pieceShape.length; r++) {
+    for (let c = 0; c < pieceShape[r].length; c++) {
+      if (pieceShape[r][c]) {
+        const col = startX + c;
+        const cellStartY = startY + r;
+        const cellEndY = endY + r;
+        if (cellEndY > cellStartY) {
+          for (let row = cellStartY; row < cellEndY; row++) {
+            const trail = scene.add.rectangle(
+              scene.boardX + col * scene.tileSize + scene.tileSize / 2,
+              scene.boardY + row * scene.tileSize + scene.tileSize / 2,
+              scene.tileSize - 6,
+              scene.tileSize - 6,
+              pieceColor,
+              0.55
+            ).setDepth(4);
+            scene.tweens.add({
+              targets: trail,
+              alpha: 0,
+              scale: 0.4,
+              duration: 280,
+              delay: (row - cellStartY) * 18,
+              onComplete: () => trail.destroy()
+            });
+          }
+        }
+      }
+    }
+  }
+  
   mergePiece(scene);
   clearLines(scene);
   spawnPiece(scene);
@@ -685,8 +743,36 @@ function update(time, delta) {
 
   scene.graphics.clear();
   
+  // Outer background pattern (diagonal lines)
+  scene.graphics.fillStyle(0x0a0a18, 1);
+  scene.graphics.fillRect(0, 0, 800, 600);
+  scene.graphics.lineStyle(1, 0x15152e, 0.5);
+  for (let i = -600; i < 800; i += 40) {
+    scene.graphics.lineBetween(i, 0, i + 600, 600);
+  }
+
+  // Board background
   scene.graphics.fillStyle(0x050510, 1);
   scene.graphics.fillRect(scene.boardX, scene.boardY, scene.boardWidth * scene.tileSize, scene.boardHeight * scene.tileSize);
+
+  // Subtle grid lines (each cell border)
+  scene.graphics.lineStyle(1, 0x1a1a3e, 0.7);
+  for (let c = 0; c <= scene.boardWidth; c++) {
+    const x = scene.boardX + c * scene.tileSize;
+    scene.graphics.lineBetween(x, scene.boardY, x, scene.boardY + scene.boardHeight * scene.tileSize);
+  }
+  for (let r = 0; r <= scene.boardHeight; r++) {
+    const y = scene.boardY + r * scene.tileSize;
+    scene.graphics.lineBetween(scene.boardX, y, scene.boardX + scene.boardWidth * scene.tileSize, y);
+  }
+
+  // Dot markers at cell corners
+  scene.graphics.fillStyle(0x2a2a5e, 0.8);
+  for (let c = 0; c <= scene.boardWidth; c++) {
+    for (let r = 0; r <= scene.boardHeight; r++) {
+      scene.graphics.fillCircle(scene.boardX + c * scene.tileSize, scene.boardY + r * scene.tileSize, 1.5);
+    }
+  }
   
   for (let r = 0; r < scene.boardHeight; r++) {
     for (let c = 0; c < scene.boardWidth; c++) {
@@ -742,6 +828,14 @@ function update(time, delta) {
       }
     }
   }
+
+  // Neon border around board (drawn after blocks)
+  const boardW = scene.boardWidth * scene.tileSize;
+  const boardH = scene.boardHeight * scene.tileSize;
+  scene.graphics.lineStyle(3, 0x00ffff, 0.9);
+  scene.graphics.strokeRect(scene.boardX - 2, scene.boardY - 2, boardW + 4, boardH + 4);
+  scene.graphics.lineStyle(1, 0x00ffff, 0.4);
+  scene.graphics.strokeRect(scene.boardX - 6, scene.boardY - 6, boardW + 12, boardH + 12);
 
   // Draw Energy Bar
   const barX = 70;
