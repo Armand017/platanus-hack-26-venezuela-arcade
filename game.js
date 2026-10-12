@@ -21,6 +21,8 @@ const CABINET_KEYS = {
   P1_L: ['a', 'ArrowLeft'],
   P1_R: ['d', 'ArrowRight'],
   P1_1: ['u', 'z'],
+  P1_2: ['i', 'x'],
+  P1_3: ['o', 'c'],
   START1: ['Enter']
 };
 
@@ -53,6 +55,19 @@ function create() {
     if (code) scene.controls.held[code] = false;
   });
 
+  resetGame(scene);
+
+  scene.graphics = scene.add.graphics();
+
+  scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+  scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
+  scene.timerText = scene.add.text(730, 60, 'TIME:\n60', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
+  scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
+  scene.infoText = scene.add.text(400, 570, 'P1_2: Destroy Piece | P1_3: SlowMo/Clear | START: Restart', { fontSize: '14px', fill: '#aaa' }).setOrigin(0.5);
+  scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
+}
+
+function resetGame(scene) {
   scene.boardWidth = 10;
   scene.boardHeight = 20;
   scene.tileSize = 24;
@@ -78,12 +93,18 @@ function create() {
   scene.gameOver = false;
   scene.moveCooldown = 0;
 
+  scene.timeLeft = 60;
+  scene.combo = 0;
+  scene.comboTimer = 0;
+  scene.energy = 0; // 0 to 100
+  scene.slowMoTimer = 0;
+  scene.noComboGain = false;
+
   spawnPiece(scene);
-
-  scene.graphics = scene.add.graphics();
-
-  scene.add.text(400, 25, 'TETRIS', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-  scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
+  if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
+  if (scene.timerText) scene.timerText.setText('TIME:\n60');
+  if (scene.comboText) scene.comboText.setText('COMBO:\nx0');
+  if (scene.gameOverText) scene.gameOverText.setText('');
 }
 
 function spawnPiece(scene) {
@@ -97,6 +118,7 @@ function spawnPiece(scene) {
 
   if (checkCollision(scene, scene.currentPiece, 0, 0)) {
     scene.gameOver = true;
+    scene.gameOverText.setText('GAME OVER\nPRESS START TO RESTART');
   }
 }
 
@@ -141,8 +163,14 @@ function clearLines(scene) {
     }
   }
   if (cleared > 0) {
-    scene.score += cleared * 100;
+    if (!scene.noComboGain) {
+      scene.combo++;
+      scene.energy = Math.min(100, scene.energy + cleared * 15);
+    }
+    scene.comboTimer = 3000; // 3 seconds to keep combo
+    scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
     scene.scoreText.setText('SCORE:\n' + scene.score);
+    scene.comboText.setText('COMBO:\nx' + scene.combo);
   }
 }
 
@@ -163,7 +191,71 @@ function rotatePiece(scene) {
 
 function update(time, delta) {
   const scene = this;
-  if (scene.gameOver) return;
+
+  if (scene.gameOver) {
+    if (scene.controls.pressed['START1']) {
+      scene.controls.pressed['START1'] = false;
+      resetGame(scene);
+    }
+    return;
+  }
+
+  // Timer countdown
+  scene.timeLeft -= delta / 1000;
+  if (scene.timeLeft <= 0) {
+    scene.timeLeft = 0;
+    scene.gameOver = true;
+    scene.gameOverText.setText('TIME UP!\nPRESS START TO RESTART');
+    return;
+  }
+  scene.timerText.setText('TIME:\n' + Math.ceil(scene.timeLeft));
+
+  // Combo decay
+  if (scene.combo > 0) {
+    scene.comboTimer -= delta;
+    if (scene.comboTimer <= 0) {
+      scene.combo = 0;
+      scene.comboText.setText('COMBO:\nx0');
+    }
+  }
+
+  // SlowMo timer
+  if (scene.slowMoTimer > 0) {
+    scene.slowMoTimer -= delta;
+    if (scene.slowMoTimer <= 0) {
+      scene.noComboGain = false;
+    }
+  }
+
+  // Superpowers
+  if (scene.controls.pressed['P1_2']) {
+    scene.controls.pressed['P1_2'] = false;
+    if (scene.energy >= 33.33) {
+      scene.energy -= 33.33;
+      scene.combo = 0;
+      scene.comboText.setText('COMBO:\nx0');
+      spawnPiece(scene);
+    }
+  }
+
+  if (scene.controls.pressed['P1_3']) {
+    scene.controls.pressed['P1_3'] = false;
+    if (scene.energy >= 100) {
+      // Level 3: Clear bottom 4 rows
+      scene.energy = 0;
+      for (let i = 0; i < 4; i++) {
+        scene.board.pop();
+        scene.board.unshift(Array(scene.boardWidth).fill(0));
+      }
+      scene.score += 500;
+      scene.scoreText.setText('SCORE:\n' + scene.score);
+    } else if (scene.energy >= 50 && scene.slowMoTimer <= 0) {
+      // Level 2: Slow down gravity for 3s
+      scene.energy -= 66.66;
+      scene.slowMoTimer = 3000;
+      scene.noComboGain = true;
+    }
+  }
 
   if (time > scene.moveCooldown) {
     if (scene.controls.held['P1_L']) {
@@ -182,7 +274,7 @@ function update(time, delta) {
     scene.controls.pressed['P1_1'] = false;
   }
 
-  let dropSpeed = scene.dropInterval;
+  let dropSpeed = scene.slowMoTimer > 0 ? scene.dropInterval * 2 : scene.dropInterval;
   if (scene.controls.held['P1_D']) {
     dropSpeed = 50;
   }
@@ -199,6 +291,10 @@ function update(time, delta) {
     }
   }
 
+  // Clear inputs pressed states
+  scene.controls.pressed = {};
+
+  // Render graphics
   scene.graphics.clear();
   
   scene.graphics.fillStyle(0x050510, 1);
@@ -222,6 +318,20 @@ function update(time, delta) {
       }
     }
   }
+
+  // Draw Energy Bar
+  const barX = 70;
+  const barY = 200;
+  const barW = 20;
+  const barH = 150;
+  scene.graphics.fillStyle(0x222244, 1);
+  scene.graphics.fillRect(barX, barY, barW, barH);
+  
+  const fillH = (scene.energy / 100) * barH;
+  scene.graphics.fillStyle(scene.energy >= 100 ? 0x00ff00 : (scene.energy >= 50 ? 0x00ffff : 0xffaa00), 1);
+  scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
+  scene.graphics.lineStyle(2, 0xffffff, 1);
+  scene.graphics.strokeRect(barX, barY, barW, barH);
 }
 
 function drawTile(g, x, y, size, color) {
