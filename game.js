@@ -199,8 +199,7 @@ function triggerGameOver(scene, message) {
   const maxY = barY + barH;
 
   scene.crackPaths = [];
-  const impactCount = Phaser.Math.Between(5, 6);
-  const maxAngleChange = 60 * (Math.PI / 180);
+  const maxAngleChange = 80 * (Math.PI / 180);
 
   function createCrackPath(startX, startY, baseAngle, segmentCount) {
     const path = [{ x: startX, y: startY }];
@@ -209,7 +208,7 @@ function triggerGameOver(scene, message) {
     let curAngle = baseAngle;
     for (let s = 0; s < segmentCount; s++) {
       curAngle += (Math.random() * 2 - 1) * maxAngleChange;
-      const len = Phaser.Math.Between(5, 10);
+      const len = Math.random() * 10 + 3;
       curX = Phaser.Math.Clamp(curX + Math.cos(curAngle) * len, minX, maxX);
       curY = Phaser.Math.Clamp(curY + Math.sin(curAngle) * len, minY, maxY);
       path.push({ x: curX, y: curY });
@@ -217,25 +216,30 @@ function triggerGameOver(scene, message) {
     return path;
   }
 
-  for (let i = 0; i < impactCount; i++) {
+  // 1 large impact point with 4 long paths
+  const mainImpactX = barX + Math.random() * barW;
+  const mainImpactY = barY + Math.random() * barH;
+  for (let i = 0; i < 4; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const segs = Phaser.Math.Between(10, 15);
+    const mainPath = createCrackPath(mainImpactX, mainImpactY, angle, segs);
+    scene.crackPaths.push(mainPath);
+
+    if (Math.random() < 0.6) {
+      const midIdx = Phaser.Math.Between(2, Math.max(2, mainPath.length - 3));
+      const branchAngle = angle + (Math.random() < 0.5 ? -1 : 1) * (Phaser.Math.Between(35, 75) * (Math.PI / 180));
+      scene.crackPaths.push(createCrackPath(mainPath[midIdx].x, mainPath[midIdx].y, branchAngle, Phaser.Math.Between(4, 7)));
+    }
+  }
+
+  // Secondary impact points to reach total ~8-10 paths
+  const remainingNeeded = Phaser.Math.Between(8, 10) - scene.crackPaths.length;
+  for (let i = 0; i < remainingNeeded; i++) {
     const startX = barX + Math.random() * barW;
     const startY = barY + Math.random() * barH;
-    const pathCount = 3;
-    for (let p = 0; p < pathCount; p++) {
-      const initialAngle = Math.random() * Math.PI * 2;
-      const segmentCount = Phaser.Math.Between(5, 8);
-      const mainPath = createCrackPath(startX, startY, initialAngle, segmentCount);
-      scene.crackPaths.push(mainPath);
-
-      const branchCount = Phaser.Math.Between(2, 3);
-      for (let b = 0; b < branchCount; b++) {
-        const midIdx = Phaser.Math.Between(1, Math.max(1, mainPath.length - 2));
-        const branchStart = mainPath[midIdx];
-        const branchAngle = initialAngle + (Math.random() < 0.5 ? -1 : 1) * (Phaser.Math.Between(30, 70) * (Math.PI / 180));
-        const branchPath = createCrackPath(branchStart.x, branchStart.y, branchAngle, Phaser.Math.Between(2, 4));
-        scene.crackPaths.push(branchPath);
-      }
-    }
+    const angle = Math.random() * Math.PI * 2;
+    const segs = Phaser.Math.Between(10, 15);
+    scene.crackPaths.push(createCrackPath(startX, startY, angle, segs));
   }
 
   scene.sparkParticles = [];
@@ -780,12 +784,16 @@ function update(time, delta) {
   }
 
   if (scene.glassCracked && scene.crackPaths) {
-    scene.graphics.lineStyle(1, 0xffffff, 0.85);
     const progress = scene.glassCrackProgress;
     for (const path of scene.crackPaths) {
       for (let i = 0; i < path.length - 1; i++) {
         const pointProgress = (i + 1) / path.length;
         if (pointProgress > progress) break;
+        if (i < 3) {
+          scene.graphics.lineStyle(2, 0xffffff, 0.9);
+        } else {
+          scene.graphics.lineStyle(1, 0xffffff, 0.8);
+        }
         scene.graphics.lineBetween(
           path[i].x, path[i].y,
           path[i+1].x, path[i+1].y
