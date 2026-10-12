@@ -63,7 +63,7 @@ function create() {
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.timerText = scene.add.text(730, 60, 'TIME:\n60', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
-  scene.infoText = scene.add.text(400, 570, 'P1_2: Destroy Piece | P1_3: SlowMo/Clear | START: Restart', { fontSize: '14px', fill: '#aaa' }).setOrigin(0.5);
+  scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: B1 | DROP: B2 | POWER: B3 | RESTART: START', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
 }
 
@@ -167,7 +167,7 @@ function clearLines(scene) {
       scene.combo++;
       scene.energy = Math.min(100, scene.energy + cleared * 15);
     }
-    scene.comboTimer = 3000; // 3 seconds to keep combo
+    scene.comboTimer = 3000;
     scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
     scene.scoreText.setText('SCORE:\n' + scene.score);
     scene.comboText.setText('COMBO:\nx' + scene.combo);
@@ -189,6 +189,15 @@ function rotatePiece(scene) {
   }
 }
 
+function hardDrop(scene) {
+  while (!checkCollision(scene, scene.currentPiece, 0, 1)) {
+    scene.currentPiece.y++;
+  }
+  mergePiece(scene);
+  clearLines(scene);
+  spawnPiece(scene);
+}
+
 function update(time, delta) {
   const scene = this;
 
@@ -197,6 +206,7 @@ function update(time, delta) {
       scene.controls.pressed['START1'] = false;
       resetGame(scene);
     }
+    scene.controls.pressed = {};
     return;
   }
 
@@ -227,21 +237,19 @@ function update(time, delta) {
     }
   }
 
-  // Superpowers
-  if (scene.controls.pressed['P1_2']) {
-    scene.controls.pressed['P1_2'] = false;
-    if (scene.energy >= 33.33) {
-      scene.energy -= 33.33;
-      scene.combo = 0;
-      scene.comboText.setText('COMBO:\nx0');
-      spawnPiece(scene);
-    }
+  // Controls: P1_1 (Rotate)
+  if (scene.controls.pressed['P1_1']) {
+    rotatePiece(scene);
   }
 
+  // Controls: P1_2 (Hard Drop)
+  if (scene.controls.pressed['P1_2']) {
+    hardDrop(scene);
+  }
+
+  // Controls: P1_3 (Super Power)
   if (scene.controls.pressed['P1_3']) {
-    scene.controls.pressed['P1_3'] = false;
     if (scene.energy >= 100) {
-      // Level 3: Clear bottom 4 rows
       scene.energy = 0;
       for (let i = 0; i < 4; i++) {
         scene.board.pop();
@@ -250,10 +258,14 @@ function update(time, delta) {
       scene.score += 500;
       scene.scoreText.setText('SCORE:\n' + scene.score);
     } else if (scene.energy >= 50 && scene.slowMoTimer <= 0) {
-      // Level 2: Slow down gravity for 3s
       scene.energy -= 66.66;
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
+    } else if (scene.energy >= 33.33) {
+      scene.energy -= 33.33;
+      scene.combo = 0;
+      scene.comboText.setText('COMBO:\nx0');
+      spawnPiece(scene);
     }
   }
 
@@ -266,12 +278,6 @@ function update(time, delta) {
       if (!checkCollision(scene, scene.currentPiece, 1, 0)) scene.currentPiece.x++;
       scene.moveCooldown = time + 120;
     }
-  }
-
-  if (scene.controls.pressed['P1_U'] || scene.controls.pressed['P1_1']) {
-    rotatePiece(scene);
-    scene.controls.pressed['P1_U'] = false;
-    scene.controls.pressed['P1_1'] = false;
   }
 
   let dropSpeed = scene.slowMoTimer > 0 ? scene.dropInterval * 2 : scene.dropInterval;
