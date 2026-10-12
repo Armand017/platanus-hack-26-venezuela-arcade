@@ -187,7 +187,9 @@ function triggerGameOver(scene, message) {
   speak('GAME OVER');
 
   scene.glassCracked = true;
-  scene.glassCrackProgress = 0;
+  scene.glassColorProgress = 0;
+  scene.glassCrackDelay = 2000;
+  scene.glassCrackReady = false;
 
   const barX = 70;
   const barY = 200;
@@ -301,7 +303,9 @@ function resetGame(scene) {
   scene.glassAlpha = 1;
   scene.glassShards = [];
   scene.glassCracked = false;
-  scene.glassCrackProgress = 0;
+  scene.glassColorProgress = 0;
+  scene.glassCrackDelay = 0;
+  scene.glassCrackReady = false;
   scene.crackPaths = null;
   scene.sparkParticles = [];
   scene.sparksActive = false;
@@ -477,7 +481,15 @@ function update(time, delta) {
   }
 
   if (scene.glassCracked) {
-    scene.glassCrackProgress = Math.min(1.0, scene.glassCrackProgress + delta / 800);
+    if (scene.glassColorProgress < 1) {
+      scene.glassColorProgress = Math.min(1, scene.glassColorProgress + delta / 300);
+    }
+    if (scene.glassCrackDelay > 0) {
+      scene.glassCrackDelay -= delta;
+      if (scene.glassCrackDelay <= 0) {
+        scene.glassCrackReady = true;
+      }
+    }
   }
 
   // Energy draining for Level 3
@@ -747,7 +759,7 @@ function update(time, delta) {
   if (scene.glassCracked) {
     const c1 = Phaser.Display.Color.ValueToColor(barColor);
     const c2 = new Phaser.Display.Color(51, 51, 51);
-    const interpolated = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, Math.min(100, scene.glassCrackProgress * 100));
+    const interpolated = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, Math.min(100, scene.glassColorProgress * 100));
     barColor = Phaser.Display.Color.GetColor(interpolated.r, interpolated.g, interpolated.b);
   }
 
@@ -772,12 +784,9 @@ function update(time, delta) {
     }
   }
 
-  if (scene.glassCracked && scene.crackPaths) {
-    const progress = scene.glassCrackProgress;
+  if (scene.glassCracked && scene.glassCrackReady && scene.crackPaths) {
     for (const path of scene.crackPaths) {
       for (let i = 0; i < path.length - 1; i++) {
-        const pointProgress = (i + 1) / path.length;
-        if (pointProgress > progress) break;
         if (i < 3) {
           scene.graphics.lineStyle(2, 0xffffff, 0.9);
         } else {
