@@ -66,7 +66,6 @@ function playSound(type) {
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
     } else if (type === 'clear') {
-      // Noise burst for explosion
       const bufferSize = ctx.sampleRate * 0.15;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -134,6 +133,8 @@ function create() {
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.timerText = scene.add.text(730, 60, 'TIME:\n60', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
+  scene.add.text(730, 240, 'NEXT:', { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
+
   scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
 }
@@ -171,21 +172,28 @@ function resetGame(scene) {
   scene.slowMoTimer = 0;
   scene.noComboGain = false;
 
+  scene.nextPiece = getRandomPiece(scene);
   spawnPiece(scene);
+
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
   if (scene.timerText) scene.timerText.setText('TIME:\n60');
   if (scene.comboText) scene.comboText.setText('COMBO:\nx0');
   if (scene.gameOverText) scene.gameOverText.setText('');
 }
 
-function spawnPiece(scene) {
+function getRandomPiece(scene) {
   const idx = Math.floor(Math.random() * scene.shapes.length);
-  scene.currentPiece = {
+  return {
     shape: scene.shapes[idx],
     color: scene.colors[idx],
     x: Math.floor(scene.boardWidth / 2) - Math.floor(scene.shapes[idx][0].length / 2),
     y: 0
   };
+}
+
+function spawnPiece(scene) {
+  scene.currentPiece = scene.nextPiece;
+  scene.nextPiece = getRandomPiece(scene);
 
   if (checkCollision(scene, scene.currentPiece, 0, 0)) {
     scene.gameOver = true;
@@ -251,11 +259,9 @@ function clearLines(scene) {
 
     playSound('clear');
 
-    // Screen Shake
     const shakeIntensity = cleared === 4 ? 0.02 : 0.01;
     scene.cameras.main.shake(100, shakeIntensity);
 
-    // Floating text
     const floatText = scene.add.text(scene.boardX + scene.boardWidth * scene.tileSize / 2, scene.boardY + 200, `+${cleared * 100}` + (scene.combo > 1 ? ` x${scene.combo}` : ''), { fontSize: '20px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
     scene.tweens.add({
       targets: floatText,
@@ -306,7 +312,6 @@ function update(time, delta) {
     return;
   }
 
-  // Timer countdown
   scene.timeLeft -= delta / 1000;
   if (scene.timeLeft <= 0) {
     scene.timeLeft = 0;
@@ -317,7 +322,6 @@ function update(time, delta) {
   }
   scene.timerText.setText('TIME:\n' + Math.ceil(scene.timeLeft));
 
-  // Combo decay
   if (scene.combo > 0) {
     scene.comboTimer -= delta;
     if (scene.comboTimer <= 0) {
@@ -326,7 +330,6 @@ function update(time, delta) {
     }
   }
 
-  // SlowMo timer
   if (scene.slowMoTimer > 0) {
     scene.slowMoTimer -= delta;
     if (scene.slowMoTimer <= 0) {
@@ -334,20 +337,16 @@ function update(time, delta) {
     }
   }
 
-  // Controls: P1_1 (Rotate)
   if (scene.controls.pressed['P1_1']) {
     rotatePiece(scene);
   }
 
-  // Controls: P1_2 (Hard Drop)
   if (scene.controls.pressed['P1_2']) {
     hardDrop(scene);
   }
 
-  // Controls: P1_3 (Super Power)
   if (scene.controls.pressed['P1_3']) {
     if (scene.energy >= 100) {
-      // Level 3: Clear 4 lines
       scene.energy = 0;
       for (let i = 0; i < 4; i++) {
         scene.board.pop();
@@ -358,13 +357,11 @@ function update(time, delta) {
       playSound('clear');
       scene.cameras.main.shake(150, 0.025);
     } else if (scene.energy >= 66.66 && scene.energy < 100 && scene.slowMoTimer <= 0) {
-      // Level 2: SlowMo
       scene.energy -= 66.66;
       scene.slowMoTimer = 3000;
       scene.noComboGain = true;
       playSound('move');
     } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
-      // Level 1: Destroy piece
       scene.energy -= 33.33;
       scene.combo = 0;
       scene.comboText.setText('COMBO:\nx0');
@@ -407,10 +404,8 @@ function update(time, delta) {
     }
   }
 
-  // Clear inputs pressed states
   scene.controls.pressed = {};
 
-  // Render graphics
   scene.graphics.clear();
   
   scene.graphics.fillStyle(0x050510, 1);
@@ -426,10 +421,46 @@ function update(time, delta) {
 
   if (scene.currentPiece) {
     const p = scene.currentPiece;
+    
+    // Ghost Piece
+    let ghostY = p.y;
+    while (!checkCollision(scene, p, 0, ghostY - p.y + 1)) {
+      ghostY++;
+    }
     for (let r = 0; r < p.shape.length; r++) {
       for (let c = 0; c < p.shape[r].length; c++) {
         if (p.shape[r][c]) {
-          drawTile(scene.graphics, scene.boardX + (p.x + c) * scene.tileSize, scene.boardY + (p.y + r) * scene.tileSize, scene.tileSize, p.color);
+          drawTile(scene.graphics, scene.boardX + (p.x + c) * scene.tileSize, scene.boardY + (ghostY + r) * scene.tileSize, scene.tileSize, p.color, 0.3);
+        }
+      }
+    }
+
+    // Current Piece
+    for (let r = 0; r < p.shape.length; r++) {
+      for (let c = 0; c < p.shape[r].length; c++) {
+        if (p.shape[r][c]) {
+          drawTile(scene.graphics, scene.boardX + (p.x + c) * scene.tileSize, scene.boardY + (p.y + r) * scene.tileSize, scene.tileSize, p.color, 1.0);
+        }
+      }
+    }
+  }
+
+  // Next Piece Preview
+  if (scene.nextPiece) {
+    const np = scene.nextPiece;
+    const previewX = 700;
+    const previewY = 280;
+    scene.graphics.fillStyle(0x222244, 1);
+    scene.graphics.fillRect(previewX - 10, previewY - 10, 80, 80);
+    scene.graphics.lineStyle(1, 0xffffff, 0.5);
+    scene.graphics.strokeRect(previewX - 10, previewY - 10, 80, 80);
+
+    const offsetX = previewX + (4 - np.shape[0].length) * scene.tileSize / 4;
+    const offsetY = previewY + (4 - np.shape.length) * scene.tileSize / 4;
+    for (let r = 0; r < np.shape.length; r++) {
+      for (let c = 0; c < np.shape[r].length; c++) {
+        if (np.shape[r][c]) {
+          drawTile(scene.graphics, offsetX + c * (scene.tileSize * 0.75), offsetY + r * (scene.tileSize * 0.75), scene.tileSize * 0.75, np.color, 1.0);
         }
       }
     }
@@ -446,7 +477,6 @@ function update(time, delta) {
   const fillH = (scene.energy / 100) * barH;
   let barColor = scene.energy >= 66.66 ? 0x00ffff : 0xffaa00;
   if (scene.energy >= 100) {
-    // Flash bright yellow if full
     if (Math.floor(time / 200) % 2 === 0) {
       barColor = 0xffff00;
     } else {
@@ -459,7 +489,7 @@ function update(time, delta) {
   scene.graphics.strokeRect(barX, barY, barW, barH);
 }
 
-function drawTile(g, x, y, size, color) {
-  g.fillStyle(color, 1);
+function drawTile(g, x, y, size, color, alpha = 1.0) {
+  g.fillStyle(color, alpha);
   g.fillRect(x + 1, y + 1, size - 2, size - 2);
 }
