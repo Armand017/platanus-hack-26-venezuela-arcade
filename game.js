@@ -382,64 +382,103 @@ function mergePiece(scene) {
 }
 
 function clearLines(scene) {
-  let cleared = 0;
+  const rowsToClear = [];
   for (let r = scene.boardHeight - 1; r >= 0; r--) {
     if (scene.board[r].every(cell => cell !== 0)) {
-      scene.board.splice(r, 1);
-      scene.board.unshift(Array(scene.boardWidth).fill(0));
-      cleared++;
-      r++;
+      rowsToClear.push(r);
     }
   }
-  if (cleared > 0) {
-    if (!scene.noComboGain) {
-      scene.combo++;
-      addEnergy(scene, cleared * 15);
-      if (scene.energy >= 100) {
-        speak('MAXIMUM LEVEL!');
-      } else if (scene.combo > 1) {
-        speak('COMBO!');
-      }
-    }
-    scene.comboTimer = 3000;
-    scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
-    scene.scoreText.setText('SCORE:\n' + scene.score);
-    scene.comboText.setText('COMBO:\nx' + scene.combo);
-
-    playSound('clear');
-
-    const shakeIntensity = cleared === 4 ? 0.02 : 0.01;
-    scene.cameras.main.shake(100, shakeIntensity);
-
-    const fontSize = Math.min(52, 22 + scene.combo * 3);
-    let textColor = '#ffff00';
-    if (scene.combo >= 10) textColor = '#ff00ff';
-    else if (scene.combo >= 7) textColor = '#00ffff';
-    else if (scene.combo >= 5) textColor = '#00ff00';
-    else if (scene.combo >= 3) textColor = '#ffaa00';
-
-    const floatText = scene.add.text(
-      scene.boardX + scene.boardWidth * scene.tileSize / 2,
-      scene.boardY + scene.boardHeight * scene.tileSize / 2,
-      `+${cleared * 100 * scene.combo}` + (scene.combo > 1 ? ` x${scene.combo}` : ''),
-      {
-        fontSize: fontSize + 'px',
-        fill: textColor,
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 5
-      }
-    ).setOrigin(0.5).setDepth(100);
-    scene.tweens.add({
-      targets: floatText,
-      y: floatText.y - 80,
-      scale: 1.3,
-      alpha: 0,
-      duration: 1000,
-      ease: 'Cubic.easeOut',
-      onComplete: () => floatText.destroy()
-    });
+  
+  if (rowsToClear.length === 0) return;
+  
+  // Save the row data for the fade animation BEFORE splicing
+  const savedRows = rowsToClear.map(r => ({
+    rowIndex: r,
+    cells: [...scene.board[r]]
+  }));
+  
+  // Origin column: use the current piece's center X
+  const piece = scene.currentPiece;
+  const originCol = piece ? piece.x + Math.floor(piece.shape[0].length / 2) : 4;
+  
+  // Splice the board (game logic updated immediately)
+  for (const r of rowsToClear) {
+    scene.board.splice(r, 1);
+    scene.board.unshift(Array(scene.boardWidth).fill(0));
   }
+  
+  // Visual fade animation
+  for (const saved of savedRows) {
+    for (let c = 0; c < scene.boardWidth; c++) {
+      const cellColor = saved.cells[c];
+      if (!cellColor) continue;
+      const distance = Math.abs(c - originCol);
+      const cx = scene.boardX + c * scene.tileSize + scene.tileSize / 2;
+      const cy = scene.boardY + saved.rowIndex * scene.tileSize + scene.tileSize / 2;
+      
+      const overlay = scene.add.rectangle(cx, cy, scene.tileSize, scene.tileSize, 0xffffff, 0.9).setDepth(6);
+      scene.tweens.add({
+        targets: overlay,
+        alpha: 0,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        duration: 200,
+        delay: distance * 35,
+        ease: 'Cubic.easeOut',
+        onComplete: () => overlay.destroy()
+      });
+    }
+  }
+  
+  // Now the scoring/combo logic (unchanged)
+  const cleared = rowsToClear.length;
+  if (!scene.noComboGain) {
+    scene.combo++;
+    addEnergy(scene, cleared * 15);
+    if (scene.energy >= 100) {
+      speak('MAXIMUM LEVEL!');
+    } else if (scene.combo > 1) {
+      speak('COMBO!');
+    }
+  }
+  scene.comboTimer = 3000;
+  scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
+  scene.scoreText.setText('SCORE:\n' + scene.score);
+  scene.comboText.setText('COMBO:\nx' + scene.combo);
+  
+  playSound('clear');
+  
+  const shakeIntensity = cleared === 4 ? 0.02 : 0.01;
+  scene.cameras.main.shake(100, shakeIntensity);
+  
+  const fontSize = Math.min(52, 22 + scene.combo * 3);
+  let textColor = '#ffff00';
+  if (scene.combo >= 10) textColor = '#ff00ff';
+  else if (scene.combo >= 7) textColor = '#00ffff';
+  else if (scene.combo >= 5) textColor = '#00ff00';
+  else if (scene.combo >= 3) textColor = '#ffaa00';
+  
+  const floatText = scene.add.text(
+    scene.boardX + scene.boardWidth * scene.tileSize / 2,
+    scene.boardY + scene.boardHeight * scene.tileSize / 2,
+    `+${cleared * 100 * scene.combo}` + (scene.combo > 1 ? ` x${scene.combo}` : ''),
+    {
+      fontSize: fontSize + 'px',
+      fill: textColor,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 5
+    }
+  ).setOrigin(0.5).setDepth(100);
+  scene.tweens.add({
+    targets: floatText,
+    y: floatText.y - 80,
+    scale: 1.3,
+    alpha: 0,
+    duration: 1000,
+    ease: 'Cubic.easeOut',
+    onComplete: () => floatText.destroy()
+  });
 }
 
 function rotatePiece(scene) {
@@ -700,9 +739,40 @@ function update(time, delta) {
           });
         }
 
+        // Save bottom 4 rows for the fade animation
+        const bottomRows = [];
+        for (let i = 0; i < 4; i++) {
+          const rowIdx = scene.boardHeight - 1 - i;
+          bottomRows.push({ rowIndex: rowIdx, cells: [...scene.board[rowIdx]] });
+        }
+
+        // Do the actual splice
         for (let i = 0; i < 4; i++) {
           scene.board.pop();
           scene.board.unshift(Array(scene.boardWidth).fill(0));
+        }
+
+        // Left-to-right fade on rows with blocks
+        for (const saved of bottomRows) {
+          const hasBlocks = saved.cells.some(c => c !== 0);
+          if (!hasBlocks) continue;
+          for (let c = 0; c < scene.boardWidth; c++) {
+            const cellColor = saved.cells[c];
+            if (!cellColor) continue;
+            const cx = scene.boardX + c * scene.tileSize + scene.tileSize / 2;
+            const cy = scene.boardY + saved.rowIndex * scene.tileSize + scene.tileSize / 2;
+            const overlay = scene.add.rectangle(cx, cy, scene.tileSize, scene.tileSize, 0xffffff, 0.9).setDepth(6);
+            scene.tweens.add({
+              targets: overlay,
+              alpha: 0,
+              scaleX: 0.5,
+              scaleY: 0.5,
+              duration: 200,
+              delay: c * 30,
+              ease: 'Cubic.easeOut',
+              onComplete: () => overlay.destroy()
+            });
+          }
         }
         scene.score += 500;
         scene.scoreText.setText('SCORE:\n' + scene.score);
@@ -968,6 +1038,39 @@ function update(time, delta) {
 }
 
 function drawTile(g, x, y, size, color, alpha = 1.0) {
+  const padding = 1;
+  const innerSize = size - padding * 2;
+  const innerX = x + padding;
+  const innerY = y + padding;
+  
+  // Base darkening for shadow
+  const baseColor = Phaser.Display.Color.ValueToColor(color);
+  const shadowColor = Phaser.Display.Color.GetColor(
+    Math.floor(baseColor.r * 0.45),
+    Math.floor(baseColor.g * 0.45),
+    Math.floor(baseColor.b * 0.45)
+  );
+  const highlightColor = Phaser.Display.Color.GetColor(
+    Math.min(255, Math.floor(baseColor.r * 1.4)),
+    Math.min(255, Math.floor(baseColor.g * 1.4)),
+    Math.min(255, Math.floor(baseColor.b * 1.4))
+  );
+  
+  // Main body
   g.fillStyle(color, alpha);
-  g.fillRect(x + 1, y + 1, size - 2, size - 2);
+  g.fillRect(innerX, innerY, innerSize, innerSize);
+  
+  // Top highlight strip
+  g.fillStyle(highlightColor, alpha);
+  g.fillRect(innerX, innerY, innerSize, 3);
+  g.fillRect(innerX, innerY, 3, innerSize);
+  
+  // Bottom shadow strip
+  g.fillStyle(shadowColor, alpha);
+  g.fillRect(innerX, innerY + innerSize - 3, innerSize, 3);
+  g.fillRect(innerX + innerSize - 3, innerY, 3, innerSize);
+  
+  // Inner border (subtle)
+  g.lineStyle(1, shadowColor, alpha * 0.6);
+  g.strokeRect(innerX, innerY, innerSize, innerSize);
 }
