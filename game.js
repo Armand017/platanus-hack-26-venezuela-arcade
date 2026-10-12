@@ -43,6 +43,14 @@ function create() {
   scene.controls = { held: {}, pressed: {} };
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
+    if (k === '9') {
+      scene.energy = 50;
+      return;
+    }
+    if (k === '0') {
+      scene.energy = 100;
+      return;
+    }
     const code = KEYBOARD_TO_ARCADE[k];
     if (code) {
       if (!scene.controls.held[code]) scene.controls.pressed[code] = true;
