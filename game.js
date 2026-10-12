@@ -307,6 +307,11 @@ function resetGame(scene) {
   scene.glassCrackDelay = 0;
   scene.glassCrackReady = false;
   scene.crackPaths = null;
+  if (scene.sparkParticles) {
+    for (const p of scene.sparkParticles) {
+      if (p.obj) p.obj.destroy();
+    }
+  }
   scene.sparkParticles = [];
   scene.sparksActive = false;
 
