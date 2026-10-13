@@ -350,6 +350,8 @@ function resetGame(scene) {
   scene.statsFinalValue = 0;
   scene.statsShakeX = 0;
   scene.statsShakeY = 0;
+  scene.statsStageTimer = 0;
+  scene.statsPiecesCounter = 0;
   scene.statsTextsCreated = false;
   scene.dropTimer = 0;
   scene.dropInterval = 500;
@@ -792,37 +794,55 @@ function update(time, delta) {
       speak('BLITZ');
     }
   } else if (scene.gameState === 'STATS') {
+    if (scene.sparksActive || (scene.sparkParticles && scene.sparkParticles.length > 0)) {
+      if (scene.sparkParticles) {
+        for (const p of scene.sparkParticles) {
+          if (p.obj) p.obj.destroy();
+        }
+      }
+      scene.sparkParticles = [];
+      scene.sparksActive = false;
+    }
     scene.stateTimer += delta;
     scene.statsTimer += delta;
     
-    // Progressive score animation (100 by 100, ~40ms per increment)
+    // Sequential animation: SCORE → pause → PIECES → pause → COMBO
     if (!scene.statsScoreFinished) {
-      if (scene.statsTimer > 300) {
-        scene.statsScoreDisplay = Math.min(scene.score, scene.statsScoreDisplay + Math.ceil(delta / 20) * 100);
+      // Stage 1: Wait 700ms, then animate score 100 by 100
+      if (scene.statsTimer > 700) {
+        scene.statsScoreDisplay = Math.min(scene.score, scene.statsScoreDisplay + Math.ceil(delta / 25) * 100);
         if (scene.statsScoreDisplay >= scene.score) {
           scene.statsScoreDisplay = scene.score;
           scene.statsScoreFinished = true;
-          scene.statsPiecesTimer = 0;
+          scene.statsStageTimer = scene.statsTimer;
         }
       }
     } else if (!scene.statsPiecesFinished) {
-      scene.statsPiecesTimer = (scene.statsPiecesTimer || 0) + delta;
-      if (scene.statsPiecesTimer > 200) {
-        const increment = scene.piecesPlayed < 10 ? scene.piecesPlayed : 10;
-        scene.statsPiecesDisplay = Math.min(scene.piecesPlayed, scene.statsPiecesDisplay + increment);
-        if (scene.statsPiecesDisplay >= scene.piecesPlayed) {
-          scene.statsPiecesDisplay = scene.piecesPlayed;
-          scene.statsPiecesFinished = true;
+      // Stage 2: Wait 500ms after score, then animate pieces 10 by 10
+      if (scene.statsTimer > (scene.statsStageTimer || 0) + 500) {
+        scene.statsPiecesCounter = (scene.statsPiecesCounter || 0) + delta;
+        if (scene.statsPiecesCounter > 150) {
+          scene.statsPiecesCounter = 0;
+          const increment = scene.piecesPlayed < 10 ? scene.piecesPlayed : 10;
+          scene.statsPiecesDisplay = Math.min(scene.piecesPlayed, scene.statsPiecesDisplay + increment);
+          if (scene.statsPiecesDisplay >= scene.piecesPlayed) {
+            scene.statsPiecesDisplay = scene.piecesPlayed;
+            scene.statsPiecesFinished = true;
+            scene.statsStageTimer = scene.statsTimer;
+          }
         }
       }
     } else if (!scene.statsComboFinished) {
-      if (scene.statsComboDisplay < scene.maxCombo) {
-        scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1500) * scene.maxCombo * 0.8);
-        if (scene.statsComboDisplay >= scene.maxCombo) {
+      // Stage 3: Wait 500ms after pieces, then animate combo
+      if (scene.statsTimer > (scene.statsStageTimer || 0) + 500) {
+        if (scene.statsComboDisplay < scene.maxCombo) {
+          scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1500) * scene.maxCombo * 0.8);
+          if (scene.statsComboDisplay >= scene.maxCombo) {
+            scene.statsComboFinished = true;
+          }
+        } else {
           scene.statsComboFinished = true;
         }
-      } else {
-        scene.statsComboFinished = true;
       }
     }
     
@@ -845,6 +865,9 @@ function update(time, delta) {
   }
 
   const inGameplay = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
+  const showRack = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
+  if (scene.rackGraphics) scene.rackGraphics.setVisible(showRack);
+  if (scene.rackLabel) scene.rackLabel.setVisible(showRack);
   if (inGameplay) {
 
   if (scene.sparksActive) {
