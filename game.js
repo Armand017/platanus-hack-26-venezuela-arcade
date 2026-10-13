@@ -784,8 +784,7 @@ function update(time, delta) {
     scene.statsTimer += delta;
     // Animate combo counter from 0 to maxCombo over 1.2s
     if (scene.statsComboDisplay < scene.maxCombo) {
-      scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1200) * scene.maxCombo * 1.2);
-      scene.statsComboDisplay = Math.floor(scene.statsComboDisplay);
+      scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1000) * scene.maxCombo * 0.8);
     }
     if (scene.controls.pressed['START1'] && scene.stateTimer > 500) {
       scene.controls.pressed['START1'] = false;
@@ -1574,6 +1573,7 @@ if (scene.gameState === 'COUNTDOWN') {
 
 // STATS SCREEN
 if (scene.gameState === 'STATS') {
+  if (scene.gameOverText) scene.gameOverText.setVisible(false);
   scene.graphics.fillStyle(0x000000, 0.9);
   scene.graphics.fillRect(0, 0, 800, 600);
   
@@ -1603,8 +1603,8 @@ if (scene.gameState === 'STATS') {
   }
   
   // Update combo display with animation
-  if (scene.statsComboDisplay !== scene._lastComboDisplay) {
-    scene._lastComboDisplay = scene.statsComboDisplay;
+  if (Math.floor(scene.statsComboDisplay) !== scene._lastComboDisplay) {
+    scene._lastComboDisplay = Math.floor(scene.statsComboDisplay);
     if (scene.statsComboValue) {
       scene.statsComboValue.destroy();
       scene.statsComboValue = null;
@@ -1613,11 +1613,11 @@ if (scene.gameState === 'STATS') {
   if (!scene.statsComboValue) {
     let comboColor = '#666666';
     let fontSize = 40;
-    if (scene.statsComboDisplay >= 7) { comboColor = '#ff2222'; fontSize = 56; }
-    else if (scene.statsComboDisplay >= 4) { comboColor = '#ff6600'; fontSize = 50; }
-    else if (scene.statsComboDisplay >= 2) { comboColor = '#00ffff'; fontSize = 46; }
-    else if (scene.statsComboDisplay >= 1) { comboColor = '#00aaff'; fontSize = 42; }
-    scene.statsComboValue = scene.add.text(400, 400, 'x' + scene.statsComboDisplay, { 
+    if (Math.floor(scene.statsComboDisplay) >= 7) { comboColor = '#ff2222'; fontSize = 56; }
+    else if (Math.floor(scene.statsComboDisplay) >= 4) { comboColor = '#ff6600'; fontSize = 50; }
+    else if (Math.floor(scene.statsComboDisplay) >= 2) { comboColor = '#00ffff'; fontSize = 46; }
+    else if (Math.floor(scene.statsComboDisplay) >= 1) { comboColor = '#00aaff'; fontSize = 42; }
+    scene.statsComboValue = scene.add.text(400, 400, 'x' + Math.floor(scene.statsComboDisplay), { 
       fontSize: fontSize + 'px', fill: comboColor, fontStyle: 'bold', 
       stroke: '#000000', strokeThickness: 4 
     }).setOrigin(0.5).setDepth(310);
