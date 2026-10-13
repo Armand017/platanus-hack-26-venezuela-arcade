@@ -437,6 +437,10 @@ scene.statsComboShakeY = 0;
   }
   scene.comboFireParticles = [];
   scene.comboFireTimer = 0;
+  scene.comboExpiring = false;
+  scene.comboExpiredFlash = 0;
+  scene.comboSmokeTimer = 0;
+  scene.comboSmokeActive = false;
 
   if (scene.sparkParticles) {
     for (const p of scene.sparkParticles) {
@@ -1006,9 +1010,13 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   }
 
   // Combo box shake (applies to the box, not the text)
-  if (scene.comboShakeIntensity > 0) {
-    scene.comboShakeOffsetX = (Math.random() - 0.5) * scene.comboShakeIntensity;
-    scene.comboShakeOffsetY = (Math.random() - 0.5) * scene.comboShakeIntensity;
+  let effectiveShake = scene.comboShakeIntensity;
+  if (scene.comboExpiring) {
+    effectiveShake = scene.comboShakeIntensity + 3;
+  }
+  if (effectiveShake > 0) {
+    scene.comboShakeOffsetX = (Math.random() - 0.5) * effectiveShake;
+    scene.comboShakeOffsetY = (Math.random() - 0.5) * effectiveShake;
   } else {
     scene.comboShakeOffsetX = 0;
     scene.comboShakeOffsetY = 0;
@@ -1025,10 +1033,15 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   );
 
   // Fire particles for high combos
-  if (scene.comboHasFire && scene.comboFireParticles.length < 20) {
+  let fireCooldown = 150;
+  let fireMax = 20;
+  if (scene.combo >= 7) { fireCooldown = 60; fireMax = 40; }
+  else if (scene.combo >= 4) { fireCooldown = 90; fireMax = 30; }
+  else if (scene.combo >= 2) { fireCooldown = 120; fireMax = 25; }
+  if (scene.comboHasFire && scene.comboFireParticles.length < fireMax) {
     scene.comboFireTimer -= delta;
     if (scene.comboFireTimer <= 0) {
-      scene.comboFireTimer = 150;
+      scene.comboFireTimer = fireCooldown;
       const px = scene.comboBoxX + Math.random() * scene.comboBoxW;
       const py = scene.comboBoxY + scene.comboBoxH - 10;
       const fire = scene.add.rectangle(px, py, 4, 4, scene.comboFireColor, 1).setDepth(49);
@@ -1119,9 +1132,24 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
 
     if (scene.combo > 0) {
       scene.comboTimer -= delta;
+      scene.comboExpiring = scene.comboTimer < 1500;
       if (scene.comboTimer <= 0) {
         scene.combo = 0;
+        scene.comboExpiring = false;
+        scene.comboExpiredFlash = 300;
+        scene.comboSmokeActive = true;
+        scene.comboSmokeTimer = 800;
         updateComboBox(scene);
+      }
+    }
+
+    if (scene.comboExpiredFlash > 0) {
+      scene.comboExpiredFlash -= delta;
+    }
+    if (scene.comboSmokeTimer > 0) {
+      scene.comboSmokeTimer -= delta;
+      if (scene.comboSmokeTimer <= 0) {
+        scene.comboSmokeActive = false;
       }
     }
 
@@ -1467,7 +1495,12 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   let boxColor = 0x12121a;
   let borderColor = 0x555555;
   let borderWidth = 2;
-  if (scene.combo >= 7) {
+
+  // White flash on combo expiry
+  if (scene.comboExpiredFlash > 0) {
+    boxColor = 0xffffff;
+    borderColor = 0xffffff;
+  } else if (scene.combo >= 7) {
     boxColor = 0x3a0a0a;
     borderColor = 0xff2222;
     borderWidth = 3;
@@ -1492,6 +1525,21 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   if (scene.combo >= 1) {
     scene.graphics.lineStyle(1, borderColor, 0.5);
     scene.graphics.strokeRect(cbX + 4, cbY + 4, cbW - 8, cbH - 8);
+  }
+
+  // Smoke particles when combo just expired
+  if (scene.comboSmokeActive && Math.random() < 0.5) {
+    const sx = cbX + Math.random() * cbW;
+    const sy = cbY + Math.random() * 10;
+    const smoke = scene.add.rectangle(sx, sy, 5, 5, 0x888888, 0.6).setDepth(48);
+    scene.tweens.add({
+      targets: smoke,
+      y: sy - 30 - Math.random() * 20,
+      alpha: 0,
+      scale: 1.5,
+      duration: 700,
+      onComplete: () => smoke.destroy()
+    });
   }
   }
 
