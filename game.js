@@ -302,10 +302,6 @@ function triggerGameOver(scene, message) {
       scene.board[r][c] = 0;
     }
   }
-
-  scene.time.delayedCall(800, () => {
-    if (scene.gameOver) scene.shatterActive = true;
-  });
 }
 
 function resetGame(scene) {
@@ -360,9 +356,6 @@ function resetGame(scene) {
   scene.glassCrackDelay = 0;
   scene.glassCrackReady = false;
   scene.crackPaths = null;
-  scene.shatterActive = false;
-  scene.shatterPieces = [];
-  scene.shatterCracks = [];
 
   scene.bag = null;
   scene.nextPieces = [];
@@ -392,15 +385,6 @@ function resetGame(scene) {
   }
   scene.comboFireParticles = [];
   scene.comboFireTimer = 0;
-
-  if (scene.shatterPieces) {
-    for (const sp of scene.shatterPieces) {
-      if (sp.piece) sp.piece.destroy();
-      if (sp.crackG) sp.crackG.destroy();
-    }
-  }
-  scene.shatterPieces = [];
-  scene.shatterActive = false;
 
   if (scene.sparkParticles) {
     for (const p of scene.sparkParticles) {
@@ -874,60 +858,6 @@ function update(time, delta) {
       p.obj.destroy();
       scene.comboFireParticles.splice(i, 1);
     }
-  }
-
-  if (scene.shatterActive && scene.shatterPieces.length === 0) {
-    // Create 4 quadrant rectangles covering the entire screen
-    const W = 800, H = 600;
-    const halfW = W / 2, halfH = H / 2;
-    const quadrants = [
-      { x: 0, y: 0 },
-      { x: halfW, y: 0 },
-      { x: 0, y: halfH },
-      { x: halfW, y: halfH }
-    ];
-    
-    for (let i = 0; i < 4; i++) {
-      const q = quadrants[i];
-      const piece = scene.add.rectangle(
-        q.x + halfW / 2,
-        q.y + halfH / 2,
-        halfW,
-        halfH,
-        0x050510,
-        1
-      ).setDepth(150);
-      
-      // Draw crack lines on each piece (as a child overlay)
-      const crackG = scene.add.graphics().setDepth(151);
-      crackG.lineStyle(1, 0x00ffff, 0.8);
-      crackG.lineBetween(q.x, q.y, q.x + halfW, q.y + halfH);
-      crackG.lineStyle(1, 0xffffff, 0.5);
-      crackG.lineBetween(q.x + halfW / 2, q.y, q.x, q.y + halfH / 2);
-      
-      scene.shatterPieces.push({ piece, crackG, q, halfW, halfH, i });
-      
-      // Tween: fall and rotate
-      const fallDir = i < 2 ? -1 : 1;
-      const fallX = i % 2 === 0 ? -120 : 120;
-      scene.tweens.add({
-        targets: [piece, crackG],
-        x: `+=${fallX}`,
-        y: `+=${H + 100}`,
-        angle: fallDir * Phaser.Math.Between(25, 60),
-        alpha: 0,
-        duration: 1600,
-        ease: 'Cubic.easeIn',
-        delay: i * 60,
-        onComplete: () => {
-          piece.destroy();
-          crackG.destroy();
-        }
-      });
-    }
-    
-    playSound('clear');
-    scene.cameras.main.shake(400, 0.02);
   }
 
   // Energy draining for Level 3
