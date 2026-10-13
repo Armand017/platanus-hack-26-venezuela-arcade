@@ -225,7 +225,30 @@ function addEnergy(scene, amount) {
 function triggerGameOver(scene, message) {
   if (scene.gameOver) return;
   scene.gameOver = true;
-  scene.gameOverText.setText(message);
+  scene.gameOverText.setText('GAME OVER');
+  scene.gameOverText.setY(-100);
+  scene.gameOverText.setScale(0.5);
+  scene.tweens.add({
+    targets: scene.gameOverText,
+    y: 250,
+    scale: 1.2,
+    duration: 800,
+    ease: 'Bounce.easeOut',
+    onComplete: () => {
+      // Wavy spaghetti animation
+      scene.gameOverWaveTween = scene.tweens.add({
+        targets: scene.gameOverText,
+        angle: { from: -3, to: 3 },
+        duration: 400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
+  });
+  scene.gameOverSubText = scene.add.text(400, 340, 'PRESS ANY KEY TO SEE STATS', {
+    fontSize: '20px', fill: '#00ffff', fontStyle: 'bold'
+  }).setOrigin(0.5).setDepth(210);
   speak('GAME OVER');
 
   scene.glassCracked = true;
@@ -432,6 +455,9 @@ scene.statsComboShakeY = 0;
 
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
   if (scene.gameOverText) scene.gameOverText.setText('');
+  if (scene.gameOverWaveTween) { scene.gameOverWaveTween.stop(); scene.gameOverWaveTween = null; }
+  if (scene.gameOverText) { scene.gameOverText.setAngle(0); scene.gameOverText.setScale(1); scene.gameOverText.setY(300); }
+  if (scene.gameOverSubText) { scene.gameOverSubText.destroy(); scene.gameOverSubText = null; }
   if (scene.titleMainText) { scene.titleMainText.destroy(); scene.titleMainText = null; scene.titleTextsCreated = false; }
   if (scene.titleSubText) { scene.titleSubText.destroy(); scene.titleSubText = null; }
   if (scene.titlePromptText) { scene.titlePromptText.destroy(); scene.titlePromptText = null; }
@@ -910,8 +936,22 @@ if (comboIntNow !== scene._lastComboTick) {
 
 if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   scene.controls.pressed['START1'] = false;
-  resetGame(scene);
-  return;
+  
+  if (!scene.statsScoreFinished) {
+    scene.statsScoreDisplay = scene.score;
+    scene.statsScoreFinished = true;
+    scene.statsStageTimer = scene.statsTimer;
+  } else if (!scene.statsPiecesFinished) {
+    scene.statsPiecesDisplay = scene.piecesPlayed;
+    scene.statsPiecesFinished = true;
+    scene.statsStageTimer = scene.statsTimer;
+  } else if (!scene.statsComboFinished) {
+    scene.statsComboDisplay = scene.maxCombo;
+    scene.statsComboFinished = true;
+  } else {
+    resetGame(scene);
+    return;
+  }
 }
 }
 
@@ -1705,6 +1745,7 @@ if (scene.gameState === 'STATS') {
   scene.graphics.fillRect(0, 0, 800, 600);
   
   if (scene.gameOverText) scene.gameOverText.setVisible(false);
+  if (scene.gameOverSubText) scene.gameOverSubText.setVisible(false);
   
   if (!scene.statsTextsCreated) {
     scene.statsTextsCreated = true;
