@@ -156,7 +156,7 @@ function create() {
   const rackX = 680;
   const rackY = 200;
   const rackW = 110;
-  const slotH = 70;
+  const slotH = 65;
   const rackH = slotH * 4;
 
   const maskShape = scene.make.graphics({ x: 0, y: 0, add: false });
@@ -357,6 +357,7 @@ function resetGame(scene) {
   scene.shatterPieces = [];
   scene.shatterCracks = [];
 
+  scene.bag = null;
   scene.nextPieces = [];
   for (let i = 0; i < 4; i++) {
     scene.nextPieces.push(getRandomPiece(scene));
@@ -377,7 +378,6 @@ function resetGame(scene) {
   scene.comboShakeIntensity = 0;
   scene.comboShakeOffsetX = 0;
   scene.comboShakeOffsetY = 0;
-  scene.bag = null;
   if (scene.comboFireParticles) {
     for (const p of scene.comboFireParticles) {
       if (p.obj) p.obj.destroy();
@@ -1206,7 +1206,7 @@ function update(time, delta) {
   const rackX = 680;
   const rackY = 200;
   const rackW = 110;
-  const slotH = 70;
+  const slotH = 65;
   const rackH = slotH * 4;
 
   if (!scene.rackLabel) {
