@@ -1026,33 +1026,35 @@ function update(time, delta) {
     }
   }
 
-  // Neon border around board (3 sides only, right side is the time bar)
+  // Neon border around board (3 sides only, right side is the time bar frame)
   const boardW = scene.boardWidth * scene.tileSize;
   const boardH = scene.boardHeight * scene.tileSize;
+  const boardRight = scene.boardX + boardW - 4;
 
   // Outer glow (3 sides)
   scene.graphics.lineStyle(3, 0x00ffff, 0.9);
-  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, scene.boardX + boardW + 2, scene.boardY - 2);
+  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, boardRight, scene.boardY - 2);
   scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, scene.boardX - 2, scene.boardY + boardH + 2);
-  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY + boardH + 2, scene.boardX + boardW + 2, scene.boardY + boardH + 2);
+  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY + boardH + 2, boardRight, scene.boardY + boardH + 2);
 
   // Inner glow (3 sides)
   scene.graphics.lineStyle(1, 0x00ffff, 0.4);
-  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, scene.boardX + boardW + 6, scene.boardY - 6);
+  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, boardRight + 2, scene.boardY - 6);
   scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, scene.boardX - 6, scene.boardY + boardH + 6);
-  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY + boardH + 6, scene.boardX + boardW + 6, scene.boardY + boardH + 6);
+  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY + boardH + 6, boardRight + 2, scene.boardY + boardH + 6);
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + scene.boardWidth * scene.tileSize + 4;
   const timeBarY = scene.boardY;
   const timeBarW = 14;
   const timeBarH = scene.boardHeight * scene.tileSize;
+  const timeBarFrameX = scene.boardX + scene.boardWidth * scene.tileSize;
 
   // Frame (red border)
   scene.graphics.fillStyle(0x1a0a0a, 1);
-  scene.graphics.fillRect(timeBarX - 2, timeBarY - 2, timeBarW + 4, timeBarH + 4);
+  scene.graphics.fillRect(timeBarFrameX, timeBarY - 2, timeBarW + 4, timeBarH + 4);
   scene.graphics.lineStyle(2, 0xff2222, 1);
-  scene.graphics.strokeRect(timeBarX - 2, timeBarY - 2, timeBarW + 4, timeBarH + 4);
+  scene.graphics.strokeRect(timeBarFrameX, timeBarY - 2, timeBarW + 4, timeBarH + 4);
 
   // Inner background (empty part visible)
   scene.graphics.fillStyle(0x0a0a15, 1);
