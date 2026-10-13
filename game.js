@@ -1566,6 +1566,20 @@ if (scene.gameState === 'COUNTDOWN') {
     scene.countdownText.setScale(1 + (scene.stateTimer - 2700) / 900 * 0.5);
   }
 }
+
+// HUD visibility management
+const showHUD = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
+if (scene.scoreText) scene.scoreText.setVisible(showHUD);
+if (scene.comboLabel) scene.comboLabel.setVisible(showHUD);
+if (scene.comboValue) scene.comboValue.setVisible(showHUD);
+if (scene.rackLabel) scene.rackLabel.setVisible(showHUD);
+if (scene.infoText) scene.infoText.setVisible(showHUD);
+
+// Show board during COUNTDOWN for visual buildup
+if (scene.gameState === 'COUNTDOWN') {
+  const inCountdownForBoard = true;
+  // (the board is not rendered during countdown, that's fine — only the countdown text shows)
+}
 }
 
 function drawTile(g, x, y, size, color, alpha = 1.0) {
