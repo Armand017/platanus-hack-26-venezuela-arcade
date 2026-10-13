@@ -1163,6 +1163,8 @@ function update(time, delta) {
 
   scene.graphics.clear();
   
+  const shouldRenderGame = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
+  if (shouldRenderGame) {
   // Outer background pattern (diagonal lines)
   scene.graphics.fillStyle(0x0a0a18, 1);
   scene.graphics.fillRect(0, 0, 800, 600);
@@ -1463,6 +1465,7 @@ function update(time, delta) {
     scene.graphics.lineStyle(2, 0xffffff, scene.glassAlpha);
     scene.graphics.strokeRect(barX, barY, barW, barH);
   }
+  }
 
 // Overlay visuals for state screens
 if (scene.gameState === 'TITLE') {
@@ -1486,6 +1489,15 @@ if (scene.gameState === 'TITLE') {
       fontSize: '14px', fill: '#666666' 
     }).setOrigin(0.5).setDepth(300);
   }
+  if (scene.titleMainText) scene.titleMainText.setVisible(true);
+  if (scene.titleSubText) scene.titleSubText.setVisible(true);
+  if (scene.titlePromptText) scene.titlePromptText.setVisible(true);
+  if (scene.titleCreditText) scene.titleCreditText.setVisible(true);
+  if (scene.instrTitle) scene.instrTitle.setVisible(false);
+  if (scene.instrControls) scene.instrControls.setVisible(false);
+  if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(false);
+  if (scene.instrPower) scene.instrPower.setVisible(false);
+  if (scene.countdownText) scene.countdownText.setVisible(false);
   if (scene.titlePromptText) {
     scene.titlePromptText.setAlpha(Math.sin(scene.stateTimer / 300) * 0.5 + 0.5);
   }
@@ -1513,6 +1525,15 @@ if (scene.gameState === 'INSTRUCTIONS') {
       { fontSize: '18px', fill: '#00ffff', align: 'center', lineSpacing: 10 }
     ).setOrigin(0.5).setDepth(300);
   }
+  if (scene.titleMainText) scene.titleMainText.setVisible(false);
+  if (scene.titleSubText) scene.titleSubText.setVisible(false);
+  if (scene.titlePromptText) scene.titlePromptText.setVisible(false);
+  if (scene.titleCreditText) scene.titleCreditText.setVisible(false);
+  if (scene.instrTitle) scene.instrTitle.setVisible(true);
+  if (scene.instrControls) scene.instrControls.setVisible(true);
+  if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(true);
+  if (scene.instrPower) scene.instrPower.setVisible(true);
+  if (scene.countdownText) scene.countdownText.setVisible(false);
 }
 
 if (scene.gameState === 'COUNTDOWN') {
@@ -1525,6 +1546,15 @@ if (scene.gameState === 'COUNTDOWN') {
       stroke: '#ff2222', strokeThickness: 8 
     }).setOrigin(0.5).setDepth(300);
   }
+  if (scene.titleMainText) scene.titleMainText.setVisible(false);
+  if (scene.titleSubText) scene.titleSubText.setVisible(false);
+  if (scene.titlePromptText) scene.titlePromptText.setVisible(false);
+  if (scene.titleCreditText) scene.titleCreditText.setVisible(false);
+  if (scene.instrTitle) scene.instrTitle.setVisible(false);
+  if (scene.instrControls) scene.instrControls.setVisible(false);
+  if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(false);
+  if (scene.instrPower) scene.instrPower.setVisible(false);
+  if (scene.countdownText) scene.countdownText.setVisible(true);
   const secsLeft = 3 - Math.floor(scene.stateTimer / 900);
   if (secsLeft > 0) {
     scene.countdownText.setText(String(secsLeft));
