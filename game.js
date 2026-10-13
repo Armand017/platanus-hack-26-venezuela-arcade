@@ -149,6 +149,23 @@ function create() {
 
   scene.graphics = scene.add.graphics();
 
+  // Create a dedicated graphics object for the rack (will be masked)
+  scene.rackGraphics = scene.add.graphics();
+
+  // Create the mask (a rectangle covering the rack area)
+  const rackX = 680;
+  const rackY = 200;
+  const rackW = 110;
+  const slotH = 70;
+  const rackH = slotH * 4;
+
+  const maskShape = scene.make.graphics({ x: 0, y: 0, add: false });
+  maskShape.fillStyle(0xffffff);
+  maskShape.fillRect(rackX + 2, rackY + 2, rackW - 4, rackH - 4);
+
+  const mask = maskShape.createGeometryMask();
+  scene.rackGraphics.setMask(mask);
+
   scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
@@ -327,6 +344,10 @@ function resetGame(scene) {
   if (scene.rackLabel) {
     scene.rackLabel.destroy();
     scene.rackLabel = null;
+  }
+
+  if (scene.rackGraphics) {
+    scene.rackGraphics.clear();
   }
 
   if (scene.shatterPieces) {
@@ -1043,7 +1064,7 @@ function update(time, delta) {
     }
   }
 
-  // Ammo Cartridge (right side, below combo box area)
+  // Ammo Cartridge (right side)
   const rackX = 680;
   const rackY = 200;
   const rackW = 110;
@@ -1058,64 +1079,54 @@ function update(time, delta) {
     }).setOrigin(0.5).setDepth(10);
   }
 
-  // Cartridge frame (4 sides: top, right, bottom, left)
-  scene.graphics.lineStyle(2, 0x00ffff, 0.8);
-  scene.graphics.lineBetween(rackX, rackY, rackX + rackW, rackY);
-  scene.graphics.lineBetween(rackX + rackW, rackY, rackX + rackW, rackY + rackH);
-  scene.graphics.lineBetween(rackX, rackY + rackH, rackX + rackW, rackY + rackH);
-  scene.graphics.lineBetween(rackX, rackY, rackX, rackY + rackH);
+  scene.rackGraphics.clear();
+
+  // Frame (4 sides solid)
+  scene.rackGraphics.lineStyle(2, 0x00ffff, 0.8);
+  scene.rackGraphics.strokeRect(rackX, rackY, rackW, rackH);
 
   // Inner background
-  scene.graphics.fillStyle(0x0a0a15, 1);
-  scene.graphics.fillRect(rackX + 2, rackY + 2, rackW - 4, rackH - 4);
+  scene.rackGraphics.fillStyle(0x0a0a15, 1);
+  scene.rackGraphics.fillRect(rackX + 2, rackY + 2, rackW - 4, rackH - 4);
 
-  // Separator lines between slots (subtle)
-  scene.graphics.lineStyle(1, 0x1a1a3e, 0.6);
+  // Highlighted background for the top slot
+  scene.rackGraphics.fillStyle(0x1a2a3e, 1);
+  scene.rackGraphics.fillRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
+
+  // Yellow border for the next-up slot
+  scene.rackGraphics.lineStyle(2, 0xffff00, 0.9);
+  scene.rackGraphics.strokeRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
+
+  // Separator lines between slots
+  scene.rackGraphics.lineStyle(1, 0x1a1a3e, 0.6);
   for (let i = 1; i < 4; i++) {
-    scene.graphics.lineBetween(rackX + 8, rackY + i * slotH, rackX + rackW - 8, rackY + i * slotH);
+    scene.rackGraphics.lineBetween(rackX + 8, rackY + i * slotH, rackX + rackW - 8, rackY + i * slotH);
   }
 
-  // Draw each piece
+  // Draw each piece (will be clipped by the mask)
   for (let i = 0; i < scene.nextPieces.length; i++) {
     const piece = scene.nextPieces[i];
     if (!piece) continue;
     const visualOffset = scene.ammoShiftAnim * slotH;
     const slotCenterY = rackY + i * slotH + slotH / 2 + visualOffset;
     
-    const pieceTop = slotCenterY - (piece.shape.length * 14) / 2;
-    const pieceBottom = slotCenterY + (piece.shape.length * 14) / 2;
-    // Skip if the piece is mostly outside the frame
-    if (pieceBottom < rackY + 2 || pieceTop > rackY + rackH - 2) continue;
-    
     const pieceW = piece.shape[0].length * 14;
     const pieceH = piece.shape.length * 14;
     const offsetX = rackX + rackW / 2 - pieceW / 2;
     const offsetY = slotCenterY - pieceH / 2;
     
-    if (i === 0) {
-      // Highlighted background for the next slot
-      scene.graphics.fillStyle(0x1a2a3e, 1);
-      scene.graphics.fillRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
-      // Yellow border indicating 'next up'
-      scene.graphics.lineStyle(2, 0xffff00, 0.9);
-      scene.graphics.strokeRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
-    }
-    
     for (let r = 0; r < piece.shape.length; r++) {
       for (let c = 0; c < piece.shape[r].length; c++) {
         if (piece.shape[r][c]) {
-          drawTile(scene.graphics, offsetX + c * 14, offsetY + r * 14, 14, piece.color, 1.0);
+          drawTile(scene.rackGraphics, offsetX + c * 14, offsetY + r * 14, 14, piece.color, 1.0);
         }
       }
     }
   }
 
-  // Re-draw frame on top so pieces don't overflow the frame
-  scene.graphics.lineStyle(2, 0x00ffff, 0.8);
-  scene.graphics.lineBetween(rackX, rackY, rackX + rackW, rackY);
-  scene.graphics.lineBetween(rackX + rackW, rackY, rackX + rackW, rackY + rackH);
-  scene.graphics.lineBetween(rackX, rackY + rackH, rackX + rackW, rackY + rackH);
-  scene.graphics.lineBetween(rackX, rackY, rackX, rackY + rackH);
+  // Re-draw frame on top so pieces don't overflow the frame visually
+  scene.rackGraphics.lineStyle(2, 0x00ffff, 0.8);
+  scene.rackGraphics.strokeRect(rackX, rackY, rackW, rackH);
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + boardW + timeBarGap + 2;
