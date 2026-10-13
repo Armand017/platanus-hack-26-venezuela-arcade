@@ -120,6 +120,7 @@ function create() {
   const scene = this;
   
   scene.controls = { held: {}, pressed: {} };
+  scene.rackLabel = null;
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === '9') {
@@ -322,6 +323,11 @@ function resetGame(scene) {
     scene.nextPieces.push(getRandomPiece(scene));
   }
   scene.ammoShiftAnim = 0;
+
+  if (scene.rackLabel) {
+    scene.rackLabel.destroy();
+    scene.rackLabel = null;
+  }
 
   if (scene.shatterPieces) {
     for (const sp of scene.shatterPieces) {
@@ -1044,11 +1050,20 @@ function update(time, delta) {
   const slotH = 70;
   const rackH = slotH * 4;
 
-  // Cartridge frame (inverted L: top, right, bottom)
+  if (!scene.rackLabel) {
+    scene.rackLabel = scene.add.text(rackX + rackW / 2, rackY + 14, 'NEXT', {
+      fontSize: '11px',
+      fill: '#ffff00',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(10);
+  }
+
+  // Cartridge frame (4 sides: top, right, bottom, left)
   scene.graphics.lineStyle(2, 0x00ffff, 0.8);
   scene.graphics.lineBetween(rackX, rackY, rackX + rackW, rackY);
   scene.graphics.lineBetween(rackX + rackW, rackY, rackX + rackW, rackY + rackH);
   scene.graphics.lineBetween(rackX, rackY + rackH, rackX + rackW, rackY + rackH);
+  scene.graphics.lineBetween(rackX, rackY, rackX, rackY + rackH);
 
   // Inner background
   scene.graphics.fillStyle(0x0a0a15, 1);
@@ -1067,17 +1082,22 @@ function update(time, delta) {
     const visualOffset = scene.ammoShiftAnim * slotH;
     const slotCenterY = rackY + i * slotH + slotH / 2 + visualOffset;
     
-    // Skip if outside the frame (during slide animation)
-    if (slotCenterY > rackY + rackH + slotH / 2) continue;
+    const pieceTop = slotCenterY - (piece.shape.length * 14) / 2;
+    const pieceBottom = slotCenterY + (piece.shape.length * 14) / 2;
+    // Skip if the piece is mostly outside the frame
+    if (pieceBottom < rackY + 2 || pieceTop > rackY + rackH - 2) continue;
     
     const pieceW = piece.shape[0].length * 14;
     const pieceH = piece.shape.length * 14;
     const offsetX = rackX + rackW / 2 - pieceW / 2;
     const offsetY = slotCenterY - pieceH / 2;
     
-    // Highlight the top slot (the one about to fall)
-    if (i === 0 && scene.ammoShiftAnim < 0.1) {
-      scene.graphics.lineStyle(2, 0xffff00, 0.6);
+    if (i === 0) {
+      // Highlighted background for the next slot
+      scene.graphics.fillStyle(0x1a2a3e, 1);
+      scene.graphics.fillRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
+      // Yellow border indicating 'next up'
+      scene.graphics.lineStyle(2, 0xffff00, 0.9);
       scene.graphics.strokeRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
     }
     
@@ -1095,6 +1115,7 @@ function update(time, delta) {
   scene.graphics.lineBetween(rackX, rackY, rackX + rackW, rackY);
   scene.graphics.lineBetween(rackX + rackW, rackY, rackX + rackW, rackY + rackH);
   scene.graphics.lineBetween(rackX, rackY + rackH, rackX + rackW, rackY + rackH);
+  scene.graphics.lineBetween(rackX, rackY, rackX, rackY + rackH);
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + boardW + timeBarGap + 2;
