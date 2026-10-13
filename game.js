@@ -952,6 +952,29 @@ function update(time, delta) {
   scene.graphics.fillStyle(0x050510, 1);
   scene.graphics.fillRect(scene.boardX, scene.boardY, scene.boardWidth * scene.tileSize, scene.boardHeight * scene.tileSize);
 
+  // Unified frame: board + time bar
+  const boardW = scene.boardWidth * scene.tileSize;
+  const boardH = scene.boardHeight * scene.tileSize;
+  const timeBarW = 14;
+  const timeBarGap = 4;
+  const frameLeft = scene.boardX - 4;
+  const frameTop = scene.boardY - 4;
+  const frameRight = scene.boardX + boardW + timeBarGap + timeBarW + 4;
+  const frameBottom = scene.boardY + boardH + 4;
+
+  // Outer cyan glow
+  scene.graphics.lineStyle(3, 0x00ffff, 0.9);
+  scene.graphics.strokeRect(frameLeft - 2, frameTop - 2, (frameRight - frameLeft) + 4, (frameBottom - frameTop) + 4);
+
+  // Inner subtle glow
+  scene.graphics.lineStyle(1, 0x00ffff, 0.4);
+  scene.graphics.strokeRect(frameLeft - 6, frameTop - 6, (frameRight - frameLeft) + 12, (frameBottom - frameTop) + 12);
+
+  // Vertical separator between board and time bar (cyan)
+  const separatorX = scene.boardX + boardW + 2;
+  scene.graphics.lineStyle(2, 0x00ffff, 0.7);
+  scene.graphics.lineBetween(separatorX, frameTop, separatorX, frameBottom);
+
   // Subtle grid lines (each cell border)
   scene.graphics.lineStyle(1, 0x1a1a3e, 0.7);
   for (let c = 0; c <= scene.boardWidth; c++) {
@@ -1026,39 +1049,15 @@ function update(time, delta) {
     }
   }
 
-  // Neon border around board (3 sides only, right side is the time bar frame)
-  const boardW = scene.boardWidth * scene.tileSize;
-  const boardH = scene.boardHeight * scene.tileSize;
-  const boardRight = scene.boardX + boardW - 4;
-
-  // Outer glow (3 sides)
-  scene.graphics.lineStyle(3, 0x00ffff, 0.9);
-  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, boardRight, scene.boardY - 2);
-  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, scene.boardX - 2, scene.boardY + boardH + 2);
-  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY + boardH + 2, boardRight, scene.boardY + boardH + 2);
-
-  // Inner glow (3 sides)
-  scene.graphics.lineStyle(1, 0x00ffff, 0.4);
-  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, boardRight + 2, scene.boardY - 6);
-  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, scene.boardX - 6, scene.boardY + boardH + 6);
-  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY + boardH + 6, boardRight + 2, scene.boardY + boardH + 6);
-
   // TIME BAR (right side, adjacent to board)
-  const timeBarX = scene.boardX + scene.boardWidth * scene.tileSize + 4;
+  const timeBarX = scene.boardX + boardW + timeBarGap + 2;
   const timeBarY = scene.boardY;
-  const timeBarW = 14;
-  const timeBarH = scene.boardHeight * scene.tileSize;
-  const timeBarFrameX = scene.boardX + scene.boardWidth * scene.tileSize;
+  const timeBarW_val = 14;
+  const timeBarH = boardH;
 
-  // Frame (red border)
-  scene.graphics.fillStyle(0x1a0a0a, 1);
-  scene.graphics.fillRect(timeBarFrameX, timeBarY - 2, timeBarW + 4, timeBarH + 4);
-  scene.graphics.lineStyle(2, 0xff2222, 1);
-  scene.graphics.strokeRect(timeBarFrameX, timeBarY - 2, timeBarW + 4, timeBarH + 4);
-
-  // Inner background (empty part visible)
+  // Background of time bar
   scene.graphics.fillStyle(0x0a0a15, 1);
-  scene.graphics.fillRect(timeBarX, timeBarY, timeBarW, timeBarH);
+  scene.graphics.fillRect(timeBarX, timeBarY, timeBarW_val, timeBarH);
 
   // Fill (drains from top to bottom based on timeLeft)
   const timeRatio = Math.max(0, Math.min(1, scene.timeLeft / 60));
@@ -1088,12 +1087,12 @@ function update(time, delta) {
   // Fill from bottom (drains toward bottom, anchored at bottom)
   const fillY = timeBarY + (timeBarH - fillHeight);
   scene.graphics.fillStyle(timeColor, 1);
-  scene.graphics.fillRect(timeBarX, fillY, timeBarW, fillHeight);
+  scene.graphics.fillRect(timeBarX, fillY, timeBarW_val, fillHeight);
 
   // Inner glow line at the top of the fill (the "falling sand" edge)
   if (fillHeight > 2) {
     scene.graphics.fillStyle(0xffffff, 0.6);
-    scene.graphics.fillRect(timeBarX, fillY, timeBarW, 2);
+    scene.graphics.fillRect(timeBarX, fillY, timeBarW_val, 2);
   }
 
   // Draw Energy Bar
