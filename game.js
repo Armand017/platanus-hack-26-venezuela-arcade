@@ -170,20 +170,20 @@ function create() {
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
 
   scene.comboBoxX = 650;
-  scene.comboBoxY = 440;
+  scene.comboBoxY = 490;
   scene.comboBoxW = 130;
-  scene.comboBoxH = 100;
+  scene.comboBoxH = 70;
 
   scene.comboLabel = scene.add.text(
     scene.comboBoxX + scene.comboBoxW / 2,
-    scene.comboBoxY + 30,
+    scene.comboBoxY + 22,
     'COMBO',
     { fontSize: '16px', fill: '#666666', fontStyle: 'bold' }
   ).setOrigin(0.5).setDepth(50);
 
   scene.comboValue = scene.add.text(
     scene.comboBoxX + scene.comboBoxW / 2,
-    scene.comboBoxY + 65,
+    scene.comboBoxY + 48,
     'x0',
     { fontSize: '32px', fill: '#444444', fontStyle: 'bold' }
   ).setOrigin(0.5).setDepth(50);
@@ -522,10 +522,11 @@ function clearLines(scene) {
   const originCol = piece ? piece.x + Math.floor(piece.shape[0].length / 2) : 4;
   
   // Splice the board (game logic updated immediately)
-  for (const r of rowsToClear) {
-    scene.board.splice(r, 1);
-    scene.board.unshift(Array(scene.boardWidth).fill(0));
+  const filtered = scene.board.filter((_, idx) => !rowsToClear.includes(idx));
+  while (filtered.length < scene.boardHeight) {
+    filtered.unshift(Array(scene.boardWidth).fill(0));
   }
+  scene.board = filtered;
   
   // Visual fade animation
   for (const saved of savedRows) {
@@ -769,11 +770,11 @@ function update(time, delta) {
   if (scene.comboShakeIntensity > 0) {
     const shakeX = (Math.random() - 0.5) * scene.comboShakeIntensity;
     const shakeY = (Math.random() - 0.5) * scene.comboShakeIntensity;
-    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 30 + shakeY);
-    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 65 + shakeY);
+    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 22 + shakeY);
+    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 48 + shakeY);
   } else {
-    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 30);
-    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 65);
+    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 22);
+    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 48);
   }
 
   // Fire particles for high combos
