@@ -151,7 +151,6 @@ function create() {
   scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
-  scene.add.text(730, 240, 'NEXT:', { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
 
   scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(200);
@@ -318,6 +317,12 @@ function resetGame(scene) {
   scene.shatterPieces = [];
   scene.shatterCracks = [];
 
+  scene.nextPieces = [];
+  for (let i = 0; i < 4; i++) {
+    scene.nextPieces.push(getRandomPiece(scene));
+  }
+  scene.ammoShiftAnim = 0;
+
   if (scene.shatterPieces) {
     for (const sp of scene.shatterPieces) {
       if (sp.piece) sp.piece.destroy();
@@ -335,7 +340,6 @@ function resetGame(scene) {
   scene.sparkParticles = [];
   scene.sparksActive = false;
 
-  scene.nextPiece = getRandomPiece(scene);
   spawnPiece(scene);
 
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
@@ -354,8 +358,9 @@ function getRandomPiece(scene) {
 }
 
 function spawnPiece(scene) {
-  scene.currentPiece = scene.nextPiece;
-  scene.nextPiece = getRandomPiece(scene);
+  scene.currentPiece = scene.nextPieces.shift();
+  scene.nextPieces.push(getRandomPiece(scene));
+  scene.ammoShiftAnim = 1.0;
 
   if (checkCollision(scene, scene.currentPiece, 0, 0)) {
     triggerGameOver(scene, 'GAME OVER\nPRESS START TO RESTART');
@@ -755,6 +760,10 @@ function update(time, delta) {
       }
     }
 
+    if (scene.ammoShiftAnim > 0) {
+      scene.ammoShiftAnim = Math.max(0, scene.ammoShiftAnim - delta / 120);
+    }
+
     if (scene.combo > 0) {
       scene.comboTimer -= delta;
       if (scene.comboTimer <= 0) {
@@ -1028,26 +1037,64 @@ function update(time, delta) {
     }
   }
 
-  // Next Piece Preview
-  if (scene.nextPiece && !scene.gameOver) {
-    const np = scene.nextPiece;
-    const previewX = 700;
-    const previewY = 280;
-    scene.graphics.fillStyle(0x222244, 1);
-    scene.graphics.fillRect(previewX - 10, previewY - 10, 80, 80);
-    scene.graphics.lineStyle(1, 0xffffff, 0.5);
-    scene.graphics.strokeRect(previewX - 10, previewY - 10, 80, 80);
+  // Ammo Cartridge (right side, below combo box area)
+  const rackX = 680;
+  const rackY = 200;
+  const rackW = 110;
+  const slotH = 70;
+  const rackH = slotH * 4;
 
-    const offsetX = previewX + (4 - np.shape[0].length) * scene.tileSize / 4;
-    const offsetY = previewY + (4 - np.shape.length) * scene.tileSize / 4;
-    for (let r = 0; r < np.shape.length; r++) {
-      for (let c = 0; c < np.shape[r].length; c++) {
-        if (np.shape[r][c]) {
-          drawTile(scene.graphics, offsetX + c * (scene.tileSize * 0.75), offsetY + r * (scene.tileSize * 0.75), scene.tileSize * 0.75, np.color, 1.0);
+  // Cartridge frame (inverted L: top, right, bottom)
+  scene.graphics.lineStyle(2, 0x00ffff, 0.8);
+  scene.graphics.lineBetween(rackX, rackY, rackX + rackW, rackY);
+  scene.graphics.lineBetween(rackX + rackW, rackY, rackX + rackW, rackY + rackH);
+  scene.graphics.lineBetween(rackX, rackY + rackH, rackX + rackW, rackY + rackH);
+
+  // Inner background
+  scene.graphics.fillStyle(0x0a0a15, 1);
+  scene.graphics.fillRect(rackX + 2, rackY + 2, rackW - 4, rackH - 4);
+
+  // Separator lines between slots (subtle)
+  scene.graphics.lineStyle(1, 0x1a1a3e, 0.6);
+  for (let i = 1; i < 4; i++) {
+    scene.graphics.lineBetween(rackX + 8, rackY + i * slotH, rackX + rackW - 8, rackY + i * slotH);
+  }
+
+  // Draw each piece
+  for (let i = 0; i < scene.nextPieces.length; i++) {
+    const piece = scene.nextPieces[i];
+    if (!piece) continue;
+    const visualOffset = scene.ammoShiftAnim * slotH;
+    const slotCenterY = rackY + i * slotH + slotH / 2 + visualOffset;
+    
+    // Skip if outside the frame (during slide animation)
+    if (slotCenterY > rackY + rackH + slotH / 2) continue;
+    
+    const pieceW = piece.shape[0].length * 14;
+    const pieceH = piece.shape.length * 14;
+    const offsetX = rackX + rackW / 2 - pieceW / 2;
+    const offsetY = slotCenterY - pieceH / 2;
+    
+    // Highlight the top slot (the one about to fall)
+    if (i === 0 && scene.ammoShiftAnim < 0.1) {
+      scene.graphics.lineStyle(2, 0xffff00, 0.6);
+      scene.graphics.strokeRect(rackX + 4, rackY + 4, rackW - 8, slotH - 8);
+    }
+    
+    for (let r = 0; r < piece.shape.length; r++) {
+      for (let c = 0; c < piece.shape[r].length; c++) {
+        if (piece.shape[r][c]) {
+          drawTile(scene.graphics, offsetX + c * 14, offsetY + r * 14, 14, piece.color, 1.0);
         }
       }
     }
   }
+
+  // Re-draw frame on top so pieces don't overflow the frame
+  scene.graphics.lineStyle(2, 0x00ffff, 0.8);
+  scene.graphics.lineBetween(rackX, rackY, rackX + rackW, rackY);
+  scene.graphics.lineBetween(rackX + rackW, rackY, rackX + rackW, rackY + rackH);
+  scene.graphics.lineBetween(rackX, rackY + rackH, rackX + rackW, rackY + rackH);
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + boardW + timeBarGap + 2;
