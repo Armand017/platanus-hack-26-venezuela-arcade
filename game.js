@@ -302,6 +302,15 @@ function triggerGameOver(scene, message) {
       scene.board[r][c] = 0;
     }
   }
+
+  scene.time.delayedCall(2500, () => {
+    if (scene.gameOver) {
+      scene.gameState = 'STATS';
+      scene.statsTimer = 0;
+      scene.statsComboDisplay = 0;
+      scene.statsTextsCreated = false;
+    }
+  });
 }
 
 function resetGame(scene) {
@@ -328,6 +337,11 @@ function resetGame(scene) {
   scene.colors = [0x00ffff, 0xffff00, 0xaa00ff, 0x00ff00, 0xff0000, 0x0000ff, 0xffaa00];
 
   scene.score = 0;
+  scene.piecesPlayed = 0;
+  scene.maxCombo = 0;
+  scene.statsTimer = 0;
+  scene.statsComboDisplay = 0;
+  scene.statsTextsCreated = false;
   scene.dropTimer = 0;
   scene.dropInterval = 500;
   scene.gameOver = false;
@@ -408,6 +422,13 @@ function resetGame(scene) {
   if (scene.instrPowerTitle) { scene.instrPowerTitle.destroy(); scene.instrPowerTitle = null; }
   if (scene.instrPower) { scene.instrPower.destroy(); scene.instrPower = null; }
   if (scene.countdownText) { scene.countdownText.destroy(); scene.countdownText = null; }
+  if (scene.statsTitleText) { scene.statsTitleText.destroy(); scene.statsTitleText = null; }
+  if (scene.statsPiecesText) { scene.statsPiecesText.destroy(); scene.statsPiecesText = null; }
+  if (scene.statsPiecesValue) { scene.statsPiecesValue.destroy(); scene.statsPiecesValue = null; }
+  if (scene.statsComboText) { scene.statsComboText.destroy(); scene.statsComboText = null; }
+  if (scene.statsComboValue) { scene.statsComboValue.destroy(); scene.statsComboValue = null; }
+  if (scene.statsPromptText) { scene.statsPromptText.destroy(); scene.statsPromptText = null; }
+  scene.statsTextsCreated = false;
 }
 
 function getRandomPiece(scene) {
@@ -428,6 +449,7 @@ function getRandomPiece(scene) {
 }
 
 function spawnPiece(scene) {
+  scene.piecesPlayed++;
   scene.currentPiece = scene.nextPieces.shift();
   scene.nextPieces.push(getRandomPiece(scene));
   scene.ammoShiftAnim = 1.0;
@@ -566,6 +588,7 @@ function clearLines(scene) {
   const cleared = rowsToClear.length;
   if (!scene.noComboGain) {
     scene.combo++;
+    if (scene.combo > scene.maxCombo) scene.maxCombo = scene.combo;
     addEnergy(scene, cleared * 15);
     if (scene.energy >= 100) {
       speak('MAXIMUM LEVEL!');
@@ -755,6 +778,19 @@ function update(time, delta) {
       scene.gameState = 'PLAYING';
       scene.stateTimer = 0;
       speak('BLITZ');
+    }
+  } else if (scene.gameState === 'STATS') {
+    scene.stateTimer += delta;
+    scene.statsTimer += delta;
+    // Animate combo counter from 0 to maxCombo over 1.2s
+    if (scene.statsComboDisplay < scene.maxCombo) {
+      scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1200) * scene.maxCombo * 1.2);
+      scene.statsComboDisplay = Math.floor(scene.statsComboDisplay);
+    }
+    if (scene.controls.pressed['START1'] && scene.stateTimer > 500) {
+      scene.controls.pressed['START1'] = false;
+      resetGame(scene);
+      return;
     }
   }
 
@@ -1420,6 +1456,14 @@ if (scene.gameState !== 'INSTRUCTIONS') {
 if (scene.gameState !== 'COUNTDOWN') {
   if (scene.countdownText) scene.countdownText.setVisible(false);
 }
+if (scene.gameState !== 'STATS') {
+  if (scene.statsTitleText) scene.statsTitleText.setVisible(false);
+  if (scene.statsPiecesText) scene.statsPiecesText.setVisible(false);
+  if (scene.statsPiecesValue) scene.statsPiecesValue.setVisible(false);
+  if (scene.statsComboText) scene.statsComboText.setVisible(false);
+  if (scene.statsComboValue) scene.statsComboValue.setVisible(false);
+  if (scene.statsPromptText) scene.statsPromptText.setVisible(false);
+}
 
 // Overlay visuals for state screens
 if (scene.gameState === 'TITLE') {
@@ -1525,6 +1569,58 @@ if (scene.gameState === 'COUNTDOWN') {
     scene.countdownText.setText('BLITZ!');
     scene.countdownText.setStyle({ fill: '#00ffff', fontSize: '100px', fontStyle: 'bold', stroke: '#ffffff', strokeThickness: 6 });
     scene.countdownText.setScale(1 + (scene.stateTimer - 2700) / 900 * 0.5);
+  }
+}
+
+// STATS SCREEN
+if (scene.gameState === 'STATS') {
+  scene.graphics.fillStyle(0x000000, 0.9);
+  scene.graphics.fillRect(0, 0, 800, 600);
+  
+  if (!scene.statsTextsCreated) {
+    scene.statsTextsCreated = true;
+    scene.statsTitleText = scene.add.text(400, 100, 'GAME OVER', { 
+      fontSize: '64px', fill: '#ff2222', fontStyle: 'bold', 
+      stroke: '#000000', strokeThickness: 6 
+    }).setOrigin(0.5).setDepth(310);
+    scene.statsPiecesText = scene.add.text(400, 220, 'PIECES PLAYED', { 
+      fontSize: '18px', fill: '#aaaaaa', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(310);
+    scene.statsPiecesValue = scene.add.text(400, 260, String(scene.piecesPlayed), { 
+      fontSize: '40px', fill: '#00ffff', fontStyle: 'bold', 
+      stroke: '#000000', strokeThickness: 4 
+    }).setOrigin(0.5).setDepth(310);
+    scene.statsComboText = scene.add.text(400, 340, 'MAX COMBO', { 
+      fontSize: '18px', fill: '#aaaaaa', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(310);
+    scene.statsPromptText = scene.add.text(400, 550, 'PRESS START TO CONTINUE', { 
+      fontSize: '18px', fill: '#00ffff', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(310);
+  }
+  
+  if (scene.statsPromptText) {
+    scene.statsPromptText.setAlpha(Math.sin(scene.stateTimer / 300) * 0.5 + 0.5);
+  }
+  
+  // Update combo display with animation
+  if (scene.statsComboDisplay !== scene._lastComboDisplay) {
+    scene._lastComboDisplay = scene.statsComboDisplay;
+    if (scene.statsComboValue) {
+      scene.statsComboValue.destroy();
+      scene.statsComboValue = null;
+    }
+  }
+  if (!scene.statsComboValue) {
+    let comboColor = '#666666';
+    let fontSize = 40;
+    if (scene.statsComboDisplay >= 7) { comboColor = '#ff2222'; fontSize = 56; }
+    else if (scene.statsComboDisplay >= 4) { comboColor = '#ff6600'; fontSize = 50; }
+    else if (scene.statsComboDisplay >= 2) { comboColor = '#00ffff'; fontSize = 46; }
+    else if (scene.statsComboDisplay >= 1) { comboColor = '#00aaff'; fontSize = 42; }
+    scene.statsComboValue = scene.add.text(400, 400, 'x' + scene.statsComboDisplay, { 
+      fontSize: fontSize + 'px', fill: comboColor, fontStyle: 'bold', 
+      stroke: '#000000', strokeThickness: 4 
+    }).setOrigin(0.5).setDepth(310);
   }
 }
 
