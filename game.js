@@ -1163,7 +1163,7 @@ function update(time, delta) {
 
   scene.graphics.clear();
   
-  const shouldRenderGame = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
+  const shouldRenderGame = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER' || scene.gameState === 'COUNTDOWN';
   if (shouldRenderGame) {
   // Outer background pattern (diagonal lines)
   scene.graphics.fillStyle(0x0a0a18, 1);
@@ -1253,6 +1253,7 @@ function update(time, delta) {
     }
   }
 
+  if (scene.gameState !== 'COUNTDOWN') {
   // Ammo Cartridge (right side)
   const rackX = 680;
   const rackY = 200;
@@ -1352,6 +1353,7 @@ function update(time, delta) {
     scene.graphics.lineStyle(1, borderColor, 0.5);
     scene.graphics.strokeRect(cbX + 4, cbY + 4, cbW - 8, cbH - 8);
   }
+  }
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + boardW + timeBarGap + 2;
@@ -1399,6 +1401,7 @@ function update(time, delta) {
     scene.graphics.fillRect(timeBarX, fillY, timeBarW_val, 2);
   }
 
+  if (scene.gameState !== 'COUNTDOWN') {
   // Draw Energy Bar
   const barX = 70;
   const barY = 200;
@@ -1464,6 +1467,7 @@ function update(time, delta) {
   if (scene.glassAlpha > 0) {
     scene.graphics.lineStyle(2, 0xffffff, scene.glassAlpha);
     scene.graphics.strokeRect(barX, barY, barW, barH);
+  }
   }
   }
 
