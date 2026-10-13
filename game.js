@@ -572,7 +572,7 @@ function clearLines(scene) {
       speak('COMBO!');
     }
   }
-  scene.comboTimer = 3000;
+  scene.comboTimer = 5500;
   scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
   scene.scoreText.setText('SCORE:\n' + scene.score);
   updateComboBox(scene);
