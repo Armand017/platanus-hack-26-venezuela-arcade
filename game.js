@@ -170,7 +170,7 @@ function create() {
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
 
   scene.comboBoxX = 650;
-  scene.comboBoxY = 490;
+  scene.comboBoxY = 470;
   scene.comboBoxW = 130;
   scene.comboBoxH = 70;
 
@@ -375,6 +375,9 @@ function resetGame(scene) {
   if (scene.comboLabel) scene.comboLabel.setText('COMBO').setStyle({ fill: '#666666', fontSize: '16px' });
   if (scene.comboValue) scene.comboValue.setText('x0').setStyle({ fill: '#444444', fontSize: '32px' });
   scene.comboShakeIntensity = 0;
+  scene.comboShakeOffsetX = 0;
+  scene.comboShakeOffsetY = 0;
+  scene.bag = null;
   if (scene.comboFireParticles) {
     for (const p of scene.comboFireParticles) {
       if (p.obj) p.obj.destroy();
@@ -407,7 +410,14 @@ function resetGame(scene) {
 }
 
 function getRandomPiece(scene) {
-  const idx = Math.floor(Math.random() * scene.shapes.length);
+  if (!scene.bag || scene.bag.length === 0) {
+    scene.bag = [0, 1, 2, 3, 4, 5, 6];
+    for (let i = scene.bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [scene.bag[i], scene.bag[j]] = [scene.bag[j], scene.bag[i]];
+    }
+  }
+  const idx = scene.bag.pop();
   return {
     shape: scene.shapes[idx],
     color: scene.colors[idx],
@@ -766,16 +776,24 @@ function update(time, delta) {
     }
   }
 
-  // Combo box shake
+  // Combo box shake (applies to the box, not the text)
   if (scene.comboShakeIntensity > 0) {
-    const shakeX = (Math.random() - 0.5) * scene.comboShakeIntensity;
-    const shakeY = (Math.random() - 0.5) * scene.comboShakeIntensity;
-    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 22 + shakeY);
-    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 48 + shakeY);
+    scene.comboShakeOffsetX = (Math.random() - 0.5) * scene.comboShakeIntensity;
+    scene.comboShakeOffsetY = (Math.random() - 0.5) * scene.comboShakeIntensity;
   } else {
-    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 22);
-    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 48);
+    scene.comboShakeOffsetX = 0;
+    scene.comboShakeOffsetY = 0;
   }
+  
+  // Keep combo text anchored to box
+  if (scene.comboLabel) scene.comboLabel.setPosition(
+    scene.comboBoxX + scene.comboBoxW / 2 + (scene.comboShakeOffsetX || 0),
+    scene.comboBoxY + 22 + (scene.comboShakeOffsetY || 0)
+  );
+  if (scene.comboValue) scene.comboValue.setPosition(
+    scene.comboBoxX + scene.comboBoxW / 2 + (scene.comboShakeOffsetX || 0),
+    scene.comboBoxY + 48 + (scene.comboShakeOffsetY || 0)
+  );
 
   // Fire particles for high combos
   if (scene.comboHasFire && scene.comboFireParticles.length < 20) {
@@ -1249,13 +1267,13 @@ function update(time, delta) {
   scene.rackGraphics.strokeRect(rackX, rackY, rackW, rackH);
 
   // Combo Box (Balatro style)
-  const cbX = scene.comboBoxX;
-  const cbY = scene.comboBoxY;
+  const cbX = scene.comboBoxX + (scene.comboShakeOffsetX || 0);
+  const cbY = scene.comboBoxY + (scene.comboShakeOffsetY || 0);
   const cbW = scene.comboBoxW;
   const cbH = scene.comboBoxH;
 
-  let boxColor = 0x1a1a2e;
-  let borderColor = 0x333333;
+  let boxColor = 0x12121a;
+  let borderColor = 0x555555;
   let borderWidth = 2;
   if (scene.combo >= 7) {
     boxColor = 0x3a0a0a;
