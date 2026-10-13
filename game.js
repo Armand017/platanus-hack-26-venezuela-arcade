@@ -1471,6 +1471,23 @@ function update(time, delta) {
   }
   }
 
+// Hide screen overlays that don't belong to current state
+if (scene.gameState !== 'TITLE') {
+  if (scene.titleMainText) scene.titleMainText.setVisible(false);
+  if (scene.titleSubText) scene.titleSubText.setVisible(false);
+  if (scene.titlePromptText) scene.titlePromptText.setVisible(false);
+  if (scene.titleCreditText) scene.titleCreditText.setVisible(false);
+}
+if (scene.gameState !== 'INSTRUCTIONS') {
+  if (scene.instrTitle) scene.instrTitle.setVisible(false);
+  if (scene.instrControls) scene.instrControls.setVisible(false);
+  if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(false);
+  if (scene.instrPower) scene.instrPower.setVisible(false);
+}
+if (scene.gameState !== 'COUNTDOWN') {
+  if (scene.countdownText) scene.countdownText.setVisible(false);
+}
+
 // Overlay visuals for state screens
 if (scene.gameState === 'TITLE') {
   scene.graphics.fillStyle(0x000000, 0.95);
