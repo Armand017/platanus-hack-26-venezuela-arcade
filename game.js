@@ -351,6 +351,11 @@ function resetGame(scene) {
   scene.statsShakeX = 0;
   scene.statsShakeY = 0;
   scene.statsStageTimer = 0;
+scene._lastScoreTick = -1;
+scene._lastPiecesTick = -1;
+scene._lastComboTick = -1;
+scene.statsComboShakeX = 0;
+scene.statsComboShakeY = 0;
   scene.statsPiecesCounter = 0;
   scene.statsTextsCreated = false;
   scene.dropTimer = 0;
@@ -847,21 +852,31 @@ function update(time, delta) {
     }
     
     // Shake calculation based on current animation activity
-    const isAnimating = !scene.statsScoreFinished || !scene.statsPiecesFinished || (scene.statsComboFinished === false);
-    if (isAnimating) {
-      const shakeIntensity = 3;
-      scene.statsShakeX = (Math.random() - 0.5) * shakeIntensity;
-      scene.statsShakeY = (Math.random() - 0.5) * shakeIntensity;
-    } else {
-      scene.statsShakeX = 0;
-      scene.statsShakeY = 0;
-    }
-    
-    if (scene.controls.pressed['START1'] && scene.stateTimer > 3000) {
-      scene.controls.pressed['START1'] = false;
-      resetGame(scene);
-      return;
-    }
+scene.statsShakeX = 0;
+scene.statsShakeY = 0;
+scene.statsComboShakeX = 0;
+scene.statsComboShakeY = 0;
+
+const scoreChanged = scene.statsScoreDisplay !== scene._lastScoreTick;
+const piecesChanged = scene.statsPiecesDisplay !== scene._lastPiecesTick;
+
+if (scoreChanged) {
+  scene._lastScoreTick = scene.statsScoreDisplay;
+  scene.statsShakeX = (Math.random() - 0.5) * 5;
+  scene.statsShakeY = (Math.random() - 0.5) * 5;
+}
+if (piecesChanged) {
+  scene._lastPiecesTick = scene.statsPiecesDisplay;
+  scene.statsShakeX = (Math.random() - 0.5) * 5;
+  scene.statsShakeY = (Math.random() - 0.5) * 5;
+}
+
+const comboIntNow = Math.floor(scene.statsComboDisplay);
+if (comboIntNow !== scene._lastComboTick) {
+  scene._lastComboTick = comboIntNow;
+  scene.statsComboShakeX = (Math.random() - 0.5) * 6;
+  scene.statsComboShakeY = (Math.random() - 0.5) * 6;
+}
   }
 
   const inGameplay = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
@@ -1714,8 +1729,8 @@ if (scene.gameState === 'STATS') {
   }
   
   // Balatro box around combo
-  const comboBoxX = 340 + (scene.statsShakeX || 0);
-  const comboBoxY = 460 + (scene.statsShakeY || 0);
+const comboBoxX = 340 + (scene.statsComboShakeX || 0);
+const comboBoxY = 460 + (scene.statsComboShakeY || 0);
   const comboBoxW = 120;
   const comboBoxH = 80;
   
@@ -1738,24 +1753,26 @@ if (scene.gameState === 'STATS') {
   }
   
   // Fire particles on stats combo box
-  if (comboInt >= 2 && scene.statsComboFinished === false) {
-    if (Math.random() < 0.4) {
-      const fx = comboBoxX + Math.random() * comboBoxW;
-      const fy = comboBoxY + comboBoxH - 5;
-      let fireColor = 0x00ffff;
-      if (comboInt >= 7) fireColor = 0xff0000;
-      else if (comboInt >= 4) fireColor = 0xffaa00;
-      const spark = scene.add.rectangle(fx, fy, 4, 4, fireColor, 1).setDepth(309);
-      scene.tweens.add({
-        targets: spark,
-        y: fy - 30 - Math.random() * 20,
-        alpha: 0,
-        scale: 0.3,
-        duration: 400,
-        onComplete: () => spark.destroy()
-      });
-    }
+if (comboInt >= 2) {
+  const isComboAnimating = scene.statsComboFinished === false;
+  const fireChance = isComboAnimating ? 0.9 : 0.25;
+  if (Math.random() < fireChance) {
+    const fx = comboBoxX + Math.random() * comboBoxW;
+    const fy = comboBoxY + comboBoxH - 5;
+    let fireColor = 0x00ffff;
+    if (comboInt >= 7) fireColor = 0xff0000;
+    else if (comboInt >= 4) fireColor = 0xffaa00;
+    const spark = scene.add.rectangle(fx, fy, 4, 4, fireColor, 1).setDepth(309);
+    scene.tweens.add({
+      targets: spark,
+      y: fy - 40 - Math.random() * 25,
+      alpha: 0,
+      scale: 0.3,
+      duration: 450,
+      onComplete: () => spark.destroy()
+    });
   }
+}
   
   // Create combo value text if it doesn't exist
   if (!scene.statsComboValue) {
