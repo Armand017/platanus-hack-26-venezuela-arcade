@@ -150,12 +150,11 @@ function create() {
 
   scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
-  scene.timerText = scene.add.text(730, 60, 'TIME:\n60', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
   scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
   scene.add.text(730, 240, 'NEXT:', { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
 
   scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
-  scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
+  scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(200);
 }
 
 function addEnergy(scene, amount) {
@@ -260,6 +259,10 @@ function triggerGameOver(scene, message) {
       scene.board[r][c] = 0;
     }
   }
+
+  scene.time.delayedCall(800, () => {
+    if (scene.gameOver) scene.shatterActive = true;
+  });
 }
 
 function resetGame(scene) {
@@ -311,6 +314,19 @@ function resetGame(scene) {
   scene.glassCrackDelay = 0;
   scene.glassCrackReady = false;
   scene.crackPaths = null;
+  scene.shatterActive = false;
+  scene.shatterPieces = [];
+  scene.shatterCracks = [];
+
+  if (scene.shatterPieces) {
+    for (const sp of scene.shatterPieces) {
+      if (sp.piece) sp.piece.destroy();
+      if (sp.crackG) sp.crackG.destroy();
+    }
+  }
+  scene.shatterPieces = [];
+  scene.shatterActive = false;
+
   if (scene.sparkParticles) {
     for (const p of scene.sparkParticles) {
       if (p.obj) p.obj.destroy();
@@ -323,11 +339,6 @@ function resetGame(scene) {
   spawnPiece(scene);
 
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
-  if (scene.timerText) {
-    scene.timerText.setText('TIME:\n60');
-    scene.timerText.setStyle({ fill: '#fff' });
-    scene.timerText.setAlpha(1);
-  }
   if (scene.comboText) scene.comboText.setText('COMBO:\nx0');
   if (scene.gameOverText) scene.gameOverText.setText('');
 }
@@ -645,6 +656,60 @@ function update(time, delta) {
     }
   }
 
+  if (scene.shatterActive && scene.shatterPieces.length === 0) {
+    // Create 4 quadrant rectangles covering the entire screen
+    const W = 800, H = 600;
+    const halfW = W / 2, halfH = H / 2;
+    const quadrants = [
+      { x: 0, y: 0 },
+      { x: halfW, y: 0 },
+      { x: 0, y: halfH },
+      { x: halfW, y: halfH }
+    ];
+    
+    for (let i = 0; i < 4; i++) {
+      const q = quadrants[i];
+      const piece = scene.add.rectangle(
+        q.x + halfW / 2,
+        q.y + halfH / 2,
+        halfW,
+        halfH,
+        0x050510,
+        1
+      ).setDepth(150);
+      
+      // Draw crack lines on each piece (as a child overlay)
+      const crackG = scene.add.graphics().setDepth(151);
+      crackG.lineStyle(1, 0x00ffff, 0.8);
+      crackG.lineBetween(q.x, q.y, q.x + halfW, q.y + halfH);
+      crackG.lineStyle(1, 0xffffff, 0.5);
+      crackG.lineBetween(q.x + halfW / 2, q.y, q.x, q.y + halfH / 2);
+      
+      scene.shatterPieces.push({ piece, crackG, q, halfW, halfH, i });
+      
+      // Tween: fall and rotate
+      const fallDir = i < 2 ? -1 : 1;
+      const fallX = i % 2 === 0 ? -120 : 120;
+      scene.tweens.add({
+        targets: [piece, crackG],
+        x: `+=${fallX}`,
+        y: `+=${H + 100}`,
+        angle: fallDir * Phaser.Math.Between(25, 60),
+        alpha: 0,
+        duration: 1600,
+        ease: 'Cubic.easeIn',
+        delay: i * 60,
+        onComplete: () => {
+          piece.destroy();
+          crackG.destroy();
+        }
+      });
+    }
+    
+    playSound('clear');
+    scene.cameras.main.shake(400, 0.02);
+  }
+
   // Energy draining for Level 3
   if (scene.isDraining && scene.energy > scene.energyDrainTarget) {
     scene.energy = Math.max(scene.energyDrainTarget, scene.energy - delta * 0.6);
@@ -688,23 +753,6 @@ function update(time, delta) {
         scene.lastTickSecond = currentSec;
         playSound('tick');
       }
-    }
-
-    scene.timerText.setText('TIME:\n' + currentSec);
-
-    if (scene.timeLeft < 5) {
-      scene.timerText.setStyle({ fill: '#ff0000' });
-      if (Math.floor(time / 200) % 2 === 0) {
-        scene.timerText.setAlpha(0.2);
-      } else {
-        scene.timerText.setAlpha(1);
-      }
-    } else if (scene.timeLeft < 10) {
-      scene.timerText.setStyle({ fill: '#ffff00' });
-      scene.timerText.setAlpha(1);
-    } else {
-      scene.timerText.setStyle({ fill: '#ffffff' });
-      scene.timerText.setAlpha(1);
     }
 
     if (scene.combo > 0) {
@@ -985,6 +1033,57 @@ function update(time, delta) {
   scene.graphics.strokeRect(scene.boardX - 2, scene.boardY - 2, boardW + 4, boardH + 4);
   scene.graphics.lineStyle(1, 0x00ffff, 0.4);
   scene.graphics.strokeRect(scene.boardX - 6, scene.boardY - 6, boardW + 12, boardH + 12);
+
+  // TIME BAR (right side, adjacent to board)
+  const timeBarX = scene.boardX + scene.boardWidth * scene.tileSize + 4;
+  const timeBarY = scene.boardY;
+  const timeBarW = 14;
+  const timeBarH = scene.boardHeight * scene.tileSize;
+
+  // Frame (red border)
+  scene.graphics.fillStyle(0x1a0a0a, 1);
+  scene.graphics.fillRect(timeBarX - 2, timeBarY - 2, timeBarW + 4, timeBarH + 4);
+  scene.graphics.lineStyle(2, 0xff2222, 1);
+  scene.graphics.strokeRect(timeBarX - 2, timeBarY - 2, timeBarW + 4, timeBarH + 4);
+
+  // Inner background (empty part visible)
+  scene.graphics.fillStyle(0x0a0a15, 1);
+  scene.graphics.fillRect(timeBarX, timeBarY, timeBarW, timeBarH);
+
+  // Fill (drains from top to bottom based on timeLeft)
+  const timeRatio = Math.max(0, Math.min(1, scene.timeLeft / 60));
+  const fillHeight = timeBarH * timeRatio;
+
+  let timeColor;
+  if (timeRatio > 0.6) {
+    const t = (1 - timeRatio) / 0.4;
+    const c1 = Phaser.Display.Color.ValueToColor(0x00ffff);
+    const c2 = Phaser.Display.Color.ValueToColor(0xffff00);
+    const interp = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, t * 100);
+    timeColor = Phaser.Display.Color.GetColor(interp.r, interp.g, interp.b);
+  } else if (timeRatio > 0.3) {
+    const t = (0.6 - timeRatio) / 0.3;
+    const c1 = Phaser.Display.Color.ValueToColor(0xffff00);
+    const c2 = Phaser.Display.Color.ValueToColor(0xffaa00);
+    const interp = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, t * 100);
+    timeColor = Phaser.Display.Color.GetColor(interp.r, interp.g, interp.b);
+  } else {
+    const t = (0.3 - timeRatio) / 0.3;
+    const c1 = Phaser.Display.Color.ValueToColor(0xffaa00);
+    const c2 = Phaser.Display.Color.ValueToColor(0xff0000);
+    const interp = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, t * 100);
+    timeColor = Phaser.Display.Color.GetColor(interp.r, interp.g, interp.b);
+  }
+
+  // Fill from top (drains toward bottom)
+  scene.graphics.fillStyle(timeColor, 1);
+  scene.graphics.fillRect(timeBarX, timeBarY, timeBarW, fillHeight);
+
+  // Inner glow line at the bottom of the fill (the "falling sand" edge)
+  if (fillHeight > 2) {
+    scene.graphics.fillStyle(0xffffff, 0.6);
+    scene.graphics.fillRect(timeBarX, timeBarY + fillHeight - 2, timeBarW, 2);
+  }
 
   // Draw Energy Bar
   const barX = 70;
