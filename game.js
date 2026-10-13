@@ -225,6 +225,10 @@ function addEnergy(scene, amount) {
 function triggerGameOver(scene, message) {
   if (scene.gameOver) return;
   scene.gameOver = true;
+  scene.gameOverInputLock = true;
+  scene.time.delayedCall(1200, () => {
+    scene.gameOverInputLock = false;
+  });
   scene.gameOverText.setText('GAME OVER');
   scene.gameOverText.setY(-100);
   scene.gameOverText.setScale(0.5);
@@ -325,15 +329,6 @@ function triggerGameOver(scene, message) {
       scene.board[r][c] = 0;
     }
   }
-
-  scene.time.delayedCall(2500, () => {
-    if (scene.gameOver) {
-      scene.gameState = 'STATS';
-      scene.statsTimer = 0;
-      scene.statsComboDisplay = 0;
-      scene.statsTextsCreated = false;
-    }
-  });
 }
 
 function resetGame(scene) {
@@ -1085,10 +1080,21 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   scene.phaseFlashTimer -= delta;
 }
   if (scene.gameOver) {
-    if (scene.controls.pressed['START1']) {
-      scene.controls.pressed['START1'] = false;
-      resetGame(scene);
-      return;
+    if (!scene.gameOverInputLock) {
+      const anyPressed = scene.controls.pressed['START1'] || 
+                          scene.controls.pressed['P1_1'] || 
+                          scene.controls.pressed['P1_2'] || 
+                          scene.controls.pressed['P1_3'] ||
+                          scene.controls.pressed['P1_4'] ||
+                          scene.controls.pressed['P1_5'];
+      if (anyPressed) {
+        scene.controls.pressed = {};
+        scene.gameState = 'STATS';
+        scene.stateTimer = 0;
+        scene.statsTimer = 0;
+        scene.statsComboDisplay = 0;
+        scene.statsTextsCreated = false;
+      }
     }
     scene.controls.pressed = {};
   } else {
