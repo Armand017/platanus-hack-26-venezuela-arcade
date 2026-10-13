@@ -339,6 +339,10 @@ function resetGame(scene) {
   scene.score = 0;
   scene.piecesPlayed = 0;
   scene.maxCombo = 0;
+scene.currentPhase = 1;
+scene.phaseLines = 0;
+scene.phaseGoal = 8;
+scene.phaseFlashTimer = 0;
   scene.statsTimer = 0;
   scene.statsComboDisplay = 0;
   scene.statsScoreDisplay = 0;
@@ -617,6 +621,29 @@ function clearLines(scene) {
   }
   scene.comboTimer = 5500;
   scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
+  scene.phaseLines += cleared;
+if (scene.phaseLines >= scene.phaseGoal) {
+  scene.phaseLines = 0;
+  scene.currentPhase++;
+  scene.phaseGoal = 8 + (scene.currentPhase - 1) * 4;
+  scene.timeLeft = 60;
+  scene.dropInterval = Math.max(150, 500 - (scene.currentPhase - 1) * 60);
+  scene.phaseFlashTimer = 1500;
+  speak('PHASE ' + scene.currentPhase);
+  const phaseText = scene.add.text(400, 400, 'PHASE ' + scene.currentPhase, {
+    fontSize: '56px', fill: '#ffff00', fontStyle: 'bold',
+    stroke: '#ff2222', strokeThickness: 6
+  }).setOrigin(0.5).setDepth(200);
+  scene.tweens.add({
+    targets: phaseText,
+    y: 300,
+    scale: 1.5,
+    alpha: 0,
+    duration: 1500,
+    ease: 'Cubic.easeOut',
+    onComplete: () => phaseText.destroy()
+  });
+}
   scene.scoreText.setText('SCORE:\n' + scene.score);
   updateComboBox(scene);
   
@@ -1005,7 +1032,9 @@ if (comboIntNow !== scene._lastComboTick) {
   if (scene.energyGainTimer > 0) {
     scene.energyGainTimer -= delta;
   }
-
+   if (scene.phaseFlashTimer > 0) {
+  scene.phaseFlashTimer -= delta;
+}
   if (scene.gameOver) {
     if (scene.controls.pressed['START1']) {
       scene.controls.pressed['START1'] = false;
