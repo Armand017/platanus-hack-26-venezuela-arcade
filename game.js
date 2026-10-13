@@ -230,6 +230,7 @@ function triggerGameOver(scene, message) {
     scene.gameOverInputLock = false;
   });
   scene.gameOverText.setText('GAME OVER');
+  scene.gameOverText.setVisible(true);
   scene.gameOverText.setY(-100);
   scene.gameOverText.setScale(0.5);
   scene.tweens.add({
@@ -862,6 +863,13 @@ function update(time, delta) {
       }
       scene.sparkParticles = [];
       scene.sparksActive = false;
+      if (scene.comboFireParticles) {
+        for (const p of scene.comboFireParticles) {
+          if (p.obj) p.obj.destroy();
+        }
+      }
+      scene.comboFireParticles = [];
+      scene.comboSmokeActive = false;
     }
     scene.stateTimer += delta;
     scene.statsTimer += delta;
