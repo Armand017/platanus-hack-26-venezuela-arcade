@@ -653,7 +653,7 @@ if (scene.phaseLines >= scene.phaseGoal) {
   scene.currentPhase++;
   scene.phaseGoal = 8 + (scene.currentPhase - 1) * 4;
   scene.timeLeft = 60;
-  scene.dropInterval = Math.max(150, 500 - (scene.currentPhase - 1) * 60);
+  scene.dropInterval = Math.max(120, 500 - (scene.currentPhase - 1) * 80);
   scene.phaseFlashTimer = 1500;
   speak('PHASE ' + scene.currentPhase);
   const phaseText = scene.add.text(400, 400, 'PHASE ' + scene.currentPhase, {
