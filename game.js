@@ -812,6 +812,8 @@ function update(time, delta) {
       scene.gameState = 'COUNTDOWN';
       scene.stateTimer = 0;
       scene.lastCountdownSec = -1;
+      scene.controls.pressed = {};
+      scene.controls.held = {};
     }
   } else if (scene.gameState === 'COUNTDOWN') {
     scene.stateTimer += delta;
@@ -824,6 +826,7 @@ function update(time, delta) {
       scene.gameState = 'PLAYING';
       scene.stateTimer = 0;
       speak('BLITZ');
+      scene.controls.pressed = {};
     }
   } else if (scene.gameState === 'STATS') {
     if (scene.sparksActive || (scene.sparkParticles && scene.sparkParticles.length > 0)) {
@@ -904,7 +907,13 @@ if (comboIntNow !== scene._lastComboTick) {
   scene.statsComboShakeX = (Math.random() - 0.5) * 6;
   scene.statsComboShakeY = (Math.random() - 0.5) * 6;
 }
-  }
+
+if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
+  scene.controls.pressed['START1'] = false;
+  resetGame(scene);
+  return;
+}
+}
 
   const inGameplay = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
   const showRack = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
