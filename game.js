@@ -194,6 +194,7 @@ function create() {
   scene.comboFireParticles = [];
   scene.comboFireTimer = 0;
   scene.comboShakeIntensity = 0;
+  scene.demoLabel = null;
 
   scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(200);
@@ -417,6 +418,7 @@ function resetGame(scene) {
   if (scene.titleSubText) { scene.titleSubText.destroy(); scene.titleSubText = null; }
   if (scene.titlePromptText) { scene.titlePromptText.destroy(); scene.titlePromptText = null; }
   if (scene.titleCreditText) { scene.titleCreditText.destroy(); scene.titleCreditText = null; }
+  if (scene.demoLabel) { scene.demoLabel.destroy(); scene.demoLabel = null; }
   if (scene.instrTitle) { scene.instrTitle.destroy(); scene.instrTitle = null; scene.instrTextsCreated = false; }
   if (scene.instrControls) { scene.instrControls.destroy(); scene.instrControls = null; }
   if (scene.instrPowerTitle) { scene.instrPowerTitle.destroy(); scene.instrPowerTitle = null; }
@@ -1477,6 +1479,7 @@ if (scene.gameState !== 'TITLE') {
   if (scene.titleSubText) scene.titleSubText.setVisible(false);
   if (scene.titlePromptText) scene.titlePromptText.setVisible(false);
   if (scene.titleCreditText) scene.titleCreditText.setVisible(false);
+  if (scene.demoLabel) scene.demoLabel.setVisible(false);
 }
 if (scene.gameState !== 'INSTRUCTIONS') {
   if (scene.instrTitle) scene.instrTitle.setVisible(false);
@@ -1509,11 +1512,16 @@ if (scene.gameState === 'TITLE') {
     scene.titleCreditText = scene.add.text(400, 560, 'PLATANUS HACK 26 · CARACAS', { 
       fontSize: '14px', fill: '#666666' 
     }).setOrigin(0.5).setDepth(300);
+    scene.demoLabel = scene.add.text(720, 30, 'DEMO BUILD', { 
+      fontSize: '12px', fill: '#00ffff', fontStyle: 'bold', 
+      backgroundColor: '#000000', padding: { x: 6, y: 3 }
+    }).setOrigin(0.5).setDepth(300).setAlpha(0.7);
   }
   if (scene.titleMainText) scene.titleMainText.setVisible(true);
   if (scene.titleSubText) scene.titleSubText.setVisible(true);
   if (scene.titlePromptText) scene.titlePromptText.setVisible(true);
   if (scene.titleCreditText) scene.titleCreditText.setVisible(true);
+  if (scene.demoLabel) scene.demoLabel.setVisible(true);
   if (scene.instrTitle) scene.instrTitle.setVisible(false);
   if (scene.instrControls) scene.instrControls.setVisible(false);
   if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(false);
@@ -1550,6 +1558,7 @@ if (scene.gameState === 'INSTRUCTIONS') {
   if (scene.titleSubText) scene.titleSubText.setVisible(false);
   if (scene.titlePromptText) scene.titlePromptText.setVisible(false);
   if (scene.titleCreditText) scene.titleCreditText.setVisible(false);
+  if (scene.demoLabel) scene.demoLabel.setVisible(false);
   if (scene.instrTitle) scene.instrTitle.setVisible(true);
   if (scene.instrControls) scene.instrControls.setVisible(true);
   if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(true);
@@ -1571,6 +1580,7 @@ if (scene.gameState === 'COUNTDOWN') {
   if (scene.titleSubText) scene.titleSubText.setVisible(false);
   if (scene.titlePromptText) scene.titlePromptText.setVisible(false);
   if (scene.titleCreditText) scene.titleCreditText.setVisible(false);
+  if (scene.demoLabel) scene.demoLabel.setVisible(false);
   if (scene.instrTitle) scene.instrTitle.setVisible(false);
   if (scene.instrControls) scene.instrControls.setVisible(false);
   if (scene.instrPowerTitle) scene.instrPowerTitle.setVisible(false);
