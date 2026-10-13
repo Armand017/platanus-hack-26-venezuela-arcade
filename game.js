@@ -341,6 +341,15 @@ function resetGame(scene) {
   scene.maxCombo = 0;
   scene.statsTimer = 0;
   scene.statsComboDisplay = 0;
+  scene.statsScoreDisplay = 0;
+  scene.statsPiecesDisplay = 0;
+  scene.statsScoreFinished = false;
+  scene.statsPiecesFinished = false;
+  scene.statsComboFinished = false;
+  scene.statsFinalRevealed = false;
+  scene.statsFinalValue = 0;
+  scene.statsShakeX = 0;
+  scene.statsShakeY = 0;
   scene.statsTextsCreated = false;
   scene.dropTimer = 0;
   scene.dropInterval = 500;
@@ -423,9 +432,12 @@ function resetGame(scene) {
   if (scene.instrPower) { scene.instrPower.destroy(); scene.instrPower = null; }
   if (scene.countdownText) { scene.countdownText.destroy(); scene.countdownText = null; }
   if (scene.statsTitleText) { scene.statsTitleText.destroy(); scene.statsTitleText = null; }
-  if (scene.statsPiecesText) { scene.statsPiecesText.destroy(); scene.statsPiecesText = null; }
+  if (scene.statsScoreLabel) { scene.statsScoreLabel.destroy(); scene.statsScoreLabel = null; }
+  if (scene.statsScoreValue) { scene.statsScoreValue.destroy(); scene.statsScoreValue = null; }
+  if (scene.statsPiecesLabel) { scene.statsPiecesLabel.destroy(); scene.statsPiecesLabel = null; }
   if (scene.statsPiecesValue) { scene.statsPiecesValue.destroy(); scene.statsPiecesValue = null; }
-  if (scene.statsComboText) { scene.statsComboText.destroy(); scene.statsComboText = null; }
+  if (scene.statsComboLabel) { scene.statsComboLabel.destroy(); scene.statsComboLabel = null; }
+  scene._lastStatsCombo = -1;
   if (scene.statsComboValue) { scene.statsComboValue.destroy(); scene.statsComboValue = null; }
   if (scene.statsPromptText) { scene.statsPromptText.destroy(); scene.statsPromptText = null; }
   scene.statsTextsCreated = false;
@@ -782,11 +794,50 @@ function update(time, delta) {
   } else if (scene.gameState === 'STATS') {
     scene.stateTimer += delta;
     scene.statsTimer += delta;
-    // Animate combo counter from 0 to maxCombo over 1.2s
-    if (scene.statsComboDisplay < scene.maxCombo) {
-      scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1000) * scene.maxCombo * 0.8);
+    
+    // Progressive score animation (100 by 100, ~40ms per increment)
+    if (!scene.statsScoreFinished) {
+      if (scene.statsTimer > 300) {
+        scene.statsScoreDisplay = Math.min(scene.score, scene.statsScoreDisplay + Math.ceil(delta / 20) * 100);
+        if (scene.statsScoreDisplay >= scene.score) {
+          scene.statsScoreDisplay = scene.score;
+          scene.statsScoreFinished = true;
+          scene.statsPiecesTimer = 0;
+        }
+      }
+    } else if (!scene.statsPiecesFinished) {
+      scene.statsPiecesTimer = (scene.statsPiecesTimer || 0) + delta;
+      if (scene.statsPiecesTimer > 200) {
+        const increment = scene.piecesPlayed < 10 ? scene.piecesPlayed : 10;
+        scene.statsPiecesDisplay = Math.min(scene.piecesPlayed, scene.statsPiecesDisplay + increment);
+        if (scene.statsPiecesDisplay >= scene.piecesPlayed) {
+          scene.statsPiecesDisplay = scene.piecesPlayed;
+          scene.statsPiecesFinished = true;
+        }
+      }
+    } else if (!scene.statsComboFinished) {
+      if (scene.statsComboDisplay < scene.maxCombo) {
+        scene.statsComboDisplay = Math.min(scene.maxCombo, scene.statsComboDisplay + (delta / 1500) * scene.maxCombo * 0.8);
+        if (scene.statsComboDisplay >= scene.maxCombo) {
+          scene.statsComboFinished = true;
+        }
+      } else {
+        scene.statsComboFinished = true;
+      }
     }
-    if (scene.controls.pressed['START1'] && scene.stateTimer > 500) {
+    
+    // Shake calculation based on current animation activity
+    const isAnimating = !scene.statsScoreFinished || !scene.statsPiecesFinished || (scene.statsComboFinished === false);
+    if (isAnimating) {
+      const shakeIntensity = 3;
+      scene.statsShakeX = (Math.random() - 0.5) * shakeIntensity;
+      scene.statsShakeY = (Math.random() - 0.5) * shakeIntensity;
+    } else {
+      scene.statsShakeX = 0;
+      scene.statsShakeY = 0;
+    }
+    
+    if (scene.controls.pressed['START1'] && scene.stateTimer > 3000) {
       scene.controls.pressed['START1'] = false;
       resetGame(scene);
       return;
@@ -1457,9 +1508,11 @@ if (scene.gameState !== 'COUNTDOWN') {
 }
 if (scene.gameState !== 'STATS') {
   if (scene.statsTitleText) scene.statsTitleText.setVisible(false);
-  if (scene.statsPiecesText) scene.statsPiecesText.setVisible(false);
+  if (scene.statsScoreLabel) scene.statsScoreLabel.setVisible(false);
+  if (scene.statsScoreValue) scene.statsScoreValue.setVisible(false);
+  if (scene.statsPiecesLabel) scene.statsPiecesLabel.setVisible(false);
   if (scene.statsPiecesValue) scene.statsPiecesValue.setVisible(false);
-  if (scene.statsComboText) scene.statsComboText.setVisible(false);
+  if (scene.statsComboLabel) scene.statsComboLabel.setVisible(false);
   if (scene.statsComboValue) scene.statsComboValue.setVisible(false);
   if (scene.statsPromptText) scene.statsPromptText.setVisible(false);
 }
@@ -1571,56 +1624,138 @@ if (scene.gameState === 'COUNTDOWN') {
   }
 }
 
-// STATS SCREEN
 if (scene.gameState === 'STATS') {
-  if (scene.gameOverText) scene.gameOverText.setVisible(false);
-  scene.graphics.fillStyle(0x000000, 0.9);
+  scene.graphics.fillStyle(0x000000, 0.92);
   scene.graphics.fillRect(0, 0, 800, 600);
+  
+  if (scene.gameOverText) scene.gameOverText.setVisible(false);
   
   if (!scene.statsTextsCreated) {
     scene.statsTextsCreated = true;
-    scene.statsTitleText = scene.add.text(400, 100, 'GAME OVER', { 
-      fontSize: '64px', fill: '#ff2222', fontStyle: 'bold', 
+    
+    scene.statsTitleText = scene.add.text(400, 80, 'RESULTS', { 
+      fontSize: '48px', fill: '#ff2222', fontStyle: 'bold', 
       stroke: '#000000', strokeThickness: 6 
     }).setOrigin(0.5).setDepth(310);
-    scene.statsPiecesText = scene.add.text(400, 220, 'PIECES PLAYED', { 
-      fontSize: '18px', fill: '#aaaaaa', fontStyle: 'bold' 
+    
+    // SCORE section
+    scene.statsScoreLabel = scene.add.text(400, 180, 'SCORE', { 
+      fontSize: '16px', fill: '#888888', fontStyle: 'bold' 
     }).setOrigin(0.5).setDepth(310);
-    scene.statsPiecesValue = scene.add.text(400, 260, String(scene.piecesPlayed), { 
-      fontSize: '40px', fill: '#00ffff', fontStyle: 'bold', 
+    scene.statsScoreValue = scene.add.text(400, 220, '0', { 
+      fontSize: '44px', fill: '#ffff00', fontStyle: 'bold', 
       stroke: '#000000', strokeThickness: 4 
     }).setOrigin(0.5).setDepth(310);
-    scene.statsComboText = scene.add.text(400, 340, 'MAX COMBO', { 
-      fontSize: '18px', fill: '#aaaaaa', fontStyle: 'bold' 
+    
+    // PIECES section
+    scene.statsPiecesLabel = scene.add.text(400, 300, 'PIECES', { 
+      fontSize: '16px', fill: '#888888', fontStyle: 'bold' 
     }).setOrigin(0.5).setDepth(310);
-    scene.statsPromptText = scene.add.text(400, 550, 'PRESS START TO CONTINUE', { 
-      fontSize: '18px', fill: '#00ffff', fontStyle: 'bold' 
+    scene.statsPiecesValue = scene.add.text(400, 340, '0', { 
+      fontSize: '44px', fill: '#00ffff', fontStyle: 'bold', 
+      stroke: '#000000', strokeThickness: 4 
+    }).setOrigin(0.5).setDepth(310);
+    
+    // MAX COMBO section with Balatro-style box
+    scene.statsComboLabel = scene.add.text(400, 420, 'MAX COMBO', { 
+      fontSize: '16px', fill: '#888888', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(310);
+    
+    scene.statsPromptText = scene.add.text(400, 570, 'PRESS START TO CONTINUE', { 
+      fontSize: '16px', fill: '#00ffff', fontStyle: 'bold' 
     }).setOrigin(0.5).setDepth(310);
   }
   
-  if (scene.statsPromptText) {
-    scene.statsPromptText.setAlpha(Math.sin(scene.stateTimer / 300) * 0.5 + 0.5);
+  // Update score value
+  if (scene.statsScoreValue) {
+    scene.statsScoreValue.setText(String(scene.statsScoreDisplay));
+    scene.statsScoreValue.setX(400 + (scene.statsShakeX || 0));
+    scene.statsScoreValue.setY(220 + (scene.statsShakeY || 0));
   }
   
-  // Update combo display with animation
-  if (Math.floor(scene.statsComboDisplay) !== scene._lastComboDisplay) {
-    scene._lastComboDisplay = Math.floor(scene.statsComboDisplay);
+  // Update pieces value
+  if (scene.statsPiecesValue) {
+    scene.statsPiecesValue.setText(String(scene.statsPiecesDisplay));
+    scene.statsPiecesValue.setX(400 + (scene.statsShakeX || 0));
+    scene.statsPiecesValue.setY(340 + (scene.statsShakeY || 0));
+  }
+  
+  // Combo value display (recreated each time for fontSize changes)
+  const comboInt = Math.floor(scene.statsComboDisplay);
+  if (comboInt !== scene._lastStatsCombo) {
+    scene._lastStatsCombo = comboInt;
     if (scene.statsComboValue) {
       scene.statsComboValue.destroy();
       scene.statsComboValue = null;
     }
   }
+  
+  // Balatro box around combo
+  const comboBoxX = 340 + (scene.statsShakeX || 0);
+  const comboBoxY = 460 + (scene.statsShakeY || 0);
+  const comboBoxW = 120;
+  const comboBoxH = 80;
+  
+  let boxColor = 0x12121a;
+  let borderColor = 0x555555;
+  let borderWidth = 2;
+  if (comboInt >= 7) { boxColor = 0x3a0a0a; borderColor = 0xff2222; borderWidth = 3; }
+  else if (comboInt >= 4) { boxColor = 0x2a1a0a; borderColor = 0xffaa00; borderWidth = 3; }
+  else if (comboInt >= 2) { boxColor = 0x0a2a2a; borderColor = 0x00ffff; }
+  else if (comboInt >= 1) { boxColor = 0x0a1a2a; borderColor = 0x00aaff; }
+  
+  scene.graphics.fillStyle(boxColor, 1);
+  scene.graphics.fillRect(comboBoxX, comboBoxY, comboBoxW, comboBoxH);
+  scene.graphics.lineStyle(borderWidth, borderColor, 1);
+  scene.graphics.strokeRect(comboBoxX, comboBoxY, comboBoxW, comboBoxH);
+  
+  if (comboInt >= 1) {
+    scene.graphics.lineStyle(1, borderColor, 0.5);
+    scene.graphics.strokeRect(comboBoxX + 4, comboBoxY + 4, comboBoxW - 8, comboBoxH - 8);
+  }
+  
+  // Fire particles on stats combo box
+  if (comboInt >= 2 && scene.statsComboFinished === false) {
+    if (Math.random() < 0.4) {
+      const fx = comboBoxX + Math.random() * comboBoxW;
+      const fy = comboBoxY + comboBoxH - 5;
+      let fireColor = 0x00ffff;
+      if (comboInt >= 7) fireColor = 0xff0000;
+      else if (comboInt >= 4) fireColor = 0xffaa00;
+      const spark = scene.add.rectangle(fx, fy, 4, 4, fireColor, 1).setDepth(309);
+      scene.tweens.add({
+        targets: spark,
+        y: fy - 30 - Math.random() * 20,
+        alpha: 0,
+        scale: 0.3,
+        duration: 400,
+        onComplete: () => spark.destroy()
+      });
+    }
+  }
+  
+  // Create combo value text if it doesn't exist
   if (!scene.statsComboValue) {
     let comboColor = '#666666';
-    let fontSize = 40;
-    if (Math.floor(scene.statsComboDisplay) >= 7) { comboColor = '#ff2222'; fontSize = 56; }
-    else if (Math.floor(scene.statsComboDisplay) >= 4) { comboColor = '#ff6600'; fontSize = 50; }
-    else if (Math.floor(scene.statsComboDisplay) >= 2) { comboColor = '#00ffff'; fontSize = 46; }
-    else if (Math.floor(scene.statsComboDisplay) >= 1) { comboColor = '#00aaff'; fontSize = 42; }
-    scene.statsComboValue = scene.add.text(400, 400, 'x' + Math.floor(scene.statsComboDisplay), { 
-      fontSize: fontSize + 'px', fill: comboColor, fontStyle: 'bold', 
-      stroke: '#000000', strokeThickness: 4 
-    }).setOrigin(0.5).setDepth(310);
+    let fontSize = 36;
+    if (comboInt >= 7) { comboColor = '#ff2222'; fontSize = 52; }
+    else if (comboInt >= 4) { comboColor = '#ff6600'; fontSize = 46; }
+    else if (comboInt >= 2) { comboColor = '#00ffff'; fontSize = 42; }
+    else if (comboInt >= 1) { comboColor = '#00aaff'; fontSize = 38; }
+    scene.statsComboValue = scene.add.text(
+      comboBoxX + comboBoxW / 2, 
+      comboBoxY + comboBoxH / 2, 
+      'x' + comboInt, 
+      { fontSize: fontSize + 'px', fill: comboColor, fontStyle: 'bold', 
+        stroke: '#000000', strokeThickness: 4 }
+    ).setOrigin(0.5).setDepth(311);
+  } else {
+    scene.statsComboValue.setX(comboBoxX + comboBoxW / 2);
+    scene.statsComboValue.setY(comboBoxY + comboBoxH / 2);
+  }
+  
+  if (scene.statsPromptText) {
+    scene.statsPromptText.setAlpha(Math.sin(scene.stateTimer / 300) * 0.5 + 0.5);
   }
 }
 
