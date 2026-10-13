@@ -168,7 +168,29 @@ function create() {
 
   scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
-  scene.comboText = scene.add.text(730, 160, 'COMBO:\nx0', { fontSize: '18px', fill: '#ff0', align: 'center' }).setOrigin(0.5);
+
+  scene.comboBoxX = 650;
+  scene.comboBoxY = 440;
+  scene.comboBoxW = 130;
+  scene.comboBoxH = 100;
+
+  scene.comboLabel = scene.add.text(
+    scene.comboBoxX + scene.comboBoxW / 2,
+    scene.comboBoxY + 30,
+    'COMBO',
+    { fontSize: '16px', fill: '#666666', fontStyle: 'bold' }
+  ).setOrigin(0.5).setDepth(50);
+
+  scene.comboValue = scene.add.text(
+    scene.comboBoxX + scene.comboBoxW / 2,
+    scene.comboBoxY + 65,
+    'x0',
+    { fontSize: '32px', fill: '#444444', fontStyle: 'bold' }
+  ).setOrigin(0.5).setDepth(50);
+
+  scene.comboFireParticles = [];
+  scene.comboFireTimer = 0;
+  scene.comboShakeIntensity = 0;
 
   scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(200);
@@ -350,6 +372,17 @@ function resetGame(scene) {
     scene.rackGraphics.clear();
   }
 
+  if (scene.comboLabel) scene.comboLabel.setText('COMBO').setStyle({ fill: '#666666', fontSize: '16px' });
+  if (scene.comboValue) scene.comboValue.setText('x0').setStyle({ fill: '#444444', fontSize: '32px' });
+  scene.comboShakeIntensity = 0;
+  if (scene.comboFireParticles) {
+    for (const p of scene.comboFireParticles) {
+      if (p.obj) p.obj.destroy();
+    }
+  }
+  scene.comboFireParticles = [];
+  scene.comboFireTimer = 0;
+
   if (scene.shatterPieces) {
     for (const sp of scene.shatterPieces) {
       if (sp.piece) sp.piece.destroy();
@@ -370,7 +403,6 @@ function resetGame(scene) {
   spawnPiece(scene);
 
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
-  if (scene.comboText) scene.comboText.setText('COMBO:\nx0');
   if (scene.gameOverText) scene.gameOverText.setText('');
 }
 
@@ -422,6 +454,51 @@ function mergePiece(scene) {
       }
     }
   }
+}
+
+function updateComboBox(scene) {
+  const combo = scene.combo;
+  let labelColor = '#666666';
+  let valueColor = '#444444';
+  let fontSize = 32;
+  let hasFire = false;
+  let fireColor = 0x00aaff;
+  let shakeAmount = 0;
+
+  if (combo >= 7) {
+    labelColor = '#ffffff';
+    valueColor = '#ff2222';
+    fontSize = 42;
+    hasFire = true;
+    fireColor = 0xff0000;
+    shakeAmount = 6;
+  } else if (combo >= 4) {
+    labelColor = '#ffaa00';
+    valueColor = '#ff6600';
+    fontSize = 38;
+    hasFire = true;
+    fireColor = 0xffaa00;
+    shakeAmount = 4;
+  } else if (combo >= 2) {
+    labelColor = '#00ffff';
+    valueColor = '#00ffff';
+    fontSize = 36;
+    hasFire = true;
+    fireColor = 0x00ffff;
+    shakeAmount = 2;
+  } else if (combo >= 1) {
+    labelColor = '#0088ff';
+    valueColor = '#00aaff';
+    fontSize = 34;
+    hasFire = false;
+    shakeAmount = 1;
+  }
+
+  scene.comboLabel.setText('COMBO').setStyle({ fill: labelColor, fontSize: '16px', fontStyle: 'bold' });
+  scene.comboValue.setText('x' + combo).setStyle({ fill: valueColor, fontSize: fontSize + 'px', fontStyle: 'bold' });
+  scene.comboShakeIntensity = shakeAmount;
+  scene.comboHasFire = hasFire;
+  scene.comboFireColor = fireColor;
 }
 
 function clearLines(scene) {
@@ -487,7 +564,7 @@ function clearLines(scene) {
   scene.comboTimer = 3000;
   scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
   scene.scoreText.setText('SCORE:\n' + scene.score);
-  scene.comboText.setText('COMBO:\nx' + scene.combo);
+  updateComboBox(scene);
   
   playSound('clear');
   
@@ -688,6 +765,48 @@ function update(time, delta) {
     }
   }
 
+  // Combo box shake
+  if (scene.comboShakeIntensity > 0) {
+    const shakeX = (Math.random() - 0.5) * scene.comboShakeIntensity;
+    const shakeY = (Math.random() - 0.5) * scene.comboShakeIntensity;
+    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 30 + shakeY);
+    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2 + shakeX, scene.comboBoxY + 65 + shakeY);
+  } else {
+    if (scene.comboLabel) scene.comboLabel.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 30);
+    if (scene.comboValue) scene.comboValue.setPosition(scene.comboBoxX + scene.comboBoxW / 2, scene.comboBoxY + 65);
+  }
+
+  // Fire particles for high combos
+  if (scene.comboHasFire && scene.comboFireParticles.length < 20) {
+    scene.comboFireTimer -= delta;
+    if (scene.comboFireTimer <= 0) {
+      scene.comboFireTimer = 150;
+      const px = scene.comboBoxX + Math.random() * scene.comboBoxW;
+      const py = scene.comboBoxY + scene.comboBoxH - 10;
+      const fire = scene.add.rectangle(px, py, 4, 4, scene.comboFireColor, 1).setDepth(49);
+      scene.comboFireParticles.push({
+        obj: fire,
+        vy: -50 - Math.random() * 40,
+        vx: (Math.random() - 0.5) * 20,
+        life: 400,
+        age: 0
+      });
+    }
+  }
+
+  // Update fire particles
+  for (let i = scene.comboFireParticles.length - 1; i >= 0; i--) {
+    const p = scene.comboFireParticles[i];
+    p.obj.x += p.vx * (delta / 1000);
+    p.obj.y += p.vy * (delta / 1000);
+    p.age += delta;
+    p.obj.alpha = Math.max(0, 1 - p.age / p.life);
+    if (p.age >= p.life) {
+      p.obj.destroy();
+      scene.comboFireParticles.splice(i, 1);
+    }
+  }
+
   if (scene.shatterActive && scene.shatterPieces.length === 0) {
     // Create 4 quadrant rectangles covering the entire screen
     const W = 800, H = 600;
@@ -795,7 +914,7 @@ function update(time, delta) {
       scene.comboTimer -= delta;
       if (scene.comboTimer <= 0) {
         scene.combo = 0;
-        scene.comboText.setText('COMBO:\nx0');
+        updateComboBox(scene);
       }
     }
 
@@ -903,7 +1022,7 @@ function update(time, delta) {
       } else if (scene.energy >= 33.33 && scene.energy < 66.66) {
         addEnergy(scene, -33.33);
         scene.combo = 0;
-        scene.comboText.setText('COMBO:\nx0');
+        updateComboBox(scene);
         spawnPiece(scene);
         playSound('drop');
       }
@@ -1127,6 +1246,42 @@ function update(time, delta) {
   // Re-draw frame on top so pieces don't overflow the frame visually
   scene.rackGraphics.lineStyle(2, 0x00ffff, 0.8);
   scene.rackGraphics.strokeRect(rackX, rackY, rackW, rackH);
+
+  // Combo Box (Balatro style)
+  const cbX = scene.comboBoxX;
+  const cbY = scene.comboBoxY;
+  const cbW = scene.comboBoxW;
+  const cbH = scene.comboBoxH;
+
+  let boxColor = 0x1a1a2e;
+  let borderColor = 0x333333;
+  let borderWidth = 2;
+  if (scene.combo >= 7) {
+    boxColor = 0x3a0a0a;
+    borderColor = 0xff2222;
+    borderWidth = 3;
+  } else if (scene.combo >= 4) {
+    boxColor = 0x2a1a0a;
+    borderColor = 0xffaa00;
+    borderWidth = 3;
+  } else if (scene.combo >= 2) {
+    boxColor = 0x0a2a2a;
+    borderColor = 0x00ffff;
+  } else if (scene.combo >= 1) {
+    boxColor = 0x0a1a2a;
+    borderColor = 0x00aaff;
+  }
+
+  scene.graphics.fillStyle(boxColor, 1);
+  scene.graphics.fillRect(cbX, cbY, cbW, cbH);
+  scene.graphics.lineStyle(borderWidth, borderColor, 1);
+  scene.graphics.strokeRect(cbX, cbY, cbW, cbH);
+
+  // Inner glow when active
+  if (scene.combo >= 1) {
+    scene.graphics.lineStyle(1, borderColor, 0.5);
+    scene.graphics.strokeRect(cbX + 4, cbY + 4, cbW - 8, cbH - 8);
+  }
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + boardW + timeBarGap + 2;
