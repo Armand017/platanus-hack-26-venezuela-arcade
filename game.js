@@ -742,40 +742,38 @@ function hardDrop(scene) {
 function update(time, delta) {
   const scene = this;
 
-if (scene.gameState === 'TITLE') {
-  scene.stateTimer += delta;
-  if (scene.controls.pressed['START1']) {
-    scene.controls.pressed['START1'] = false;
-    scene.gameState = 'INSTRUCTIONS';
-    scene.stateTimer = 0;
+  // State machine transitions (no early return)
+  if (scene.gameState === 'TITLE') {
+    scene.stateTimer += delta;
+    if (scene.controls.pressed['START1'] && scene.stateTimer > 300) {
+      scene.controls.pressed['START1'] = false;
+      scene.gameState = 'INSTRUCTIONS';
+      scene.stateTimer = 0;
+    }
+  } else if (scene.gameState === 'INSTRUCTIONS') {
+    scene.stateTimer += delta;
+    if (scene.stateTimer >= 5000 || scene.controls.pressed['START1']) {
+      scene.controls.pressed['START1'] = false;
+      scene.gameState = 'COUNTDOWN';
+      scene.stateTimer = 0;
+      scene.lastCountdownSec = -1;
+    }
+  } else if (scene.gameState === 'COUNTDOWN') {
+    scene.stateTimer += delta;
+    const secsLeft = 3 - Math.floor(scene.stateTimer / 900);
+    if (secsLeft !== scene.lastCountdownSec && secsLeft > 0) {
+      scene.lastCountdownSec = secsLeft;
+      playSound('tick');
+    }
+    if (scene.stateTimer >= 3600) {
+      scene.gameState = 'PLAYING';
+      scene.stateTimer = 0;
+      speak('BLITZ');
+    }
   }
-  scene.controls.pressed = {};
-  return;
-} else if (scene.gameState === 'INSTRUCTIONS') {
-  scene.stateTimer += delta;
-  if (scene.stateTimer >= 5000 || scene.controls.pressed['START1']) {
-    scene.controls.pressed['START1'] = false;
-    scene.gameState = 'COUNTDOWN';
-    scene.stateTimer = 0;
-    scene.lastCountdownSec = -1;
-  }
-  scene.controls.pressed = {};
-  return;
-} else if (scene.gameState === 'COUNTDOWN') {
-  scene.stateTimer += delta;
-  const secsLeft = 3 - Math.floor(scene.stateTimer / 900);
-  if (secsLeft !== scene.lastCountdownSec && secsLeft > 0) {
-    scene.lastCountdownSec = secsLeft;
-    playSound('tick');
-  }
-  if (scene.stateTimer >= 3600) {
-    scene.gameState = 'PLAYING';
-    scene.stateTimer = 0;
-    speak('BLITZ');
-  }
-  scene.controls.pressed = {};
-  return;
-}
+
+  const inGameplay = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER';
+  if (inGameplay) {
 
   if (scene.sparksActive) {
     for (let i = scene.sparkParticles.length - 1; i >= 0; i--) {
@@ -1160,6 +1158,7 @@ if (scene.gameState === 'TITLE') {
     }
 
     scene.controls.pressed = {};
+  }
   }
 
   scene.graphics.clear();
