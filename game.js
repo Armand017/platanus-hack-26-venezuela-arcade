@@ -121,6 +121,9 @@ function create() {
   
   scene.controls = { held: {}, pressed: {} };
   scene.rackLabel = null;
+  scene.gameState = 'TITLE';
+  scene.stateTimer = 0;
+  scene.lastCountdownSec = -1;
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === '9') {
@@ -166,7 +169,7 @@ function create() {
   const mask = maskShape.createGeometryMask();
   scene.rackGraphics.setMask(mask);
 
-  scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+  // scene.add.text(400, 25, 'TETRIS ARCADE', { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
   scene.scoreText = scene.add.text(70, 100, 'SCORE:\n0', { fontSize: '18px', fill: '#fff', align: 'center' }).setOrigin(0.5);
 
   scene.comboBoxX = 650;
@@ -305,6 +308,9 @@ function triggerGameOver(scene, message) {
 }
 
 function resetGame(scene) {
+  scene.gameState = 'TITLE';
+  scene.stateTimer = 0;
+  scene.lastCountdownSec = -1;
   scene.boardWidth = 10;
   scene.boardHeight = 20;
   scene.tileSize = 24;
@@ -726,6 +732,41 @@ function hardDrop(scene) {
 
 function update(time, delta) {
   const scene = this;
+
+if (scene.gameState === 'TITLE') {
+  scene.stateTimer += delta;
+  if (scene.controls.pressed['START1']) {
+    scene.controls.pressed['START1'] = false;
+    scene.gameState = 'INSTRUCTIONS';
+    scene.stateTimer = 0;
+  }
+  scene.controls.pressed = {};
+  return;
+} else if (scene.gameState === 'INSTRUCTIONS') {
+  scene.stateTimer += delta;
+  if (scene.stateTimer >= 5000 || scene.controls.pressed['START1']) {
+    scene.controls.pressed['START1'] = false;
+    scene.gameState = 'COUNTDOWN';
+    scene.stateTimer = 0;
+    scene.lastCountdownSec = -1;
+  }
+  scene.controls.pressed = {};
+  return;
+} else if (scene.gameState === 'COUNTDOWN') {
+  scene.stateTimer += delta;
+  const secsLeft = 3 - Math.floor(scene.stateTimer / 900);
+  if (secsLeft !== scene.lastCountdownSec && secsLeft > 0) {
+    scene.lastCountdownSec = secsLeft;
+    playSound('tick');
+  }
+  if (scene.stateTimer >= 3600) {
+    scene.gameState = 'PLAYING';
+    scene.stateTimer = 0;
+    speak('BLITZ');
+  }
+  scene.controls.pressed = {};
+  return;
+}
 
   if (scene.sparksActive) {
     for (let i = scene.sparkParticles.length - 1; i >= 0; i--) {
