@@ -1026,13 +1026,21 @@ function update(time, delta) {
     }
   }
 
-  // Neon border around board (drawn after blocks)
+  // Neon border around board (3 sides only, right side is the time bar)
   const boardW = scene.boardWidth * scene.tileSize;
   const boardH = scene.boardHeight * scene.tileSize;
+
+  // Outer glow (3 sides)
   scene.graphics.lineStyle(3, 0x00ffff, 0.9);
-  scene.graphics.strokeRect(scene.boardX - 2, scene.boardY - 2, boardW + 4, boardH + 4);
+  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, scene.boardX + boardW + 2, scene.boardY - 2);
+  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY - 2, scene.boardX - 2, scene.boardY + boardH + 2);
+  scene.graphics.lineBetween(scene.boardX - 2, scene.boardY + boardH + 2, scene.boardX + boardW + 2, scene.boardY + boardH + 2);
+
+  // Inner glow (3 sides)
   scene.graphics.lineStyle(1, 0x00ffff, 0.4);
-  scene.graphics.strokeRect(scene.boardX - 6, scene.boardY - 6, boardW + 12, boardH + 12);
+  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, scene.boardX + boardW + 6, scene.boardY - 6);
+  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY - 6, scene.boardX - 6, scene.boardY + boardH + 6);
+  scene.graphics.lineBetween(scene.boardX - 6, scene.boardY + boardH + 6, scene.boardX + boardW + 6, scene.boardY + boardH + 6);
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + scene.boardWidth * scene.tileSize + 4;
@@ -1075,14 +1083,15 @@ function update(time, delta) {
     timeColor = Phaser.Display.Color.GetColor(interp.r, interp.g, interp.b);
   }
 
-  // Fill from top (drains toward bottom)
+  // Fill from bottom (drains toward bottom, anchored at bottom)
+  const fillY = timeBarY + (timeBarH - fillHeight);
   scene.graphics.fillStyle(timeColor, 1);
-  scene.graphics.fillRect(timeBarX, timeBarY, timeBarW, fillHeight);
+  scene.graphics.fillRect(timeBarX, fillY, timeBarW, fillHeight);
 
-  // Inner glow line at the bottom of the fill (the "falling sand" edge)
+  // Inner glow line at the top of the fill (the "falling sand" edge)
   if (fillHeight > 2) {
     scene.graphics.fillStyle(0xffffff, 0.6);
-    scene.graphics.fillRect(timeBarX, timeBarY + fillHeight - 2, timeBarW, 2);
+    scene.graphics.fillRect(timeBarX, fillY, timeBarW, 2);
   }
 
   // Draw Energy Bar
