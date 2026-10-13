@@ -413,6 +413,15 @@ function resetGame(scene) {
 
   if (scene.scoreText) scene.scoreText.setText('SCORE:\n0');
   if (scene.gameOverText) scene.gameOverText.setText('');
+  if (scene.titleMainText) { scene.titleMainText.destroy(); scene.titleMainText = null; scene.titleTextsCreated = false; }
+  if (scene.titleSubText) { scene.titleSubText.destroy(); scene.titleSubText = null; }
+  if (scene.titlePromptText) { scene.titlePromptText.destroy(); scene.titlePromptText = null; }
+  if (scene.titleCreditText) { scene.titleCreditText.destroy(); scene.titleCreditText = null; }
+  if (scene.instrTitle) { scene.instrTitle.destroy(); scene.instrTitle = null; scene.instrTextsCreated = false; }
+  if (scene.instrControls) { scene.instrControls.destroy(); scene.instrControls = null; }
+  if (scene.instrPowerTitle) { scene.instrPowerTitle.destroy(); scene.instrPowerTitle = null; }
+  if (scene.instrPower) { scene.instrPower.destroy(); scene.instrPower = null; }
+  if (scene.countdownText) { scene.countdownText.destroy(); scene.countdownText = null; }
 }
 
 function getRandomPiece(scene) {
@@ -1455,6 +1464,79 @@ if (scene.gameState === 'TITLE') {
     scene.graphics.lineStyle(2, 0xffffff, scene.glassAlpha);
     scene.graphics.strokeRect(barX, barY, barW, barH);
   }
+
+// Overlay visuals for state screens
+if (scene.gameState === 'TITLE') {
+  scene.graphics.fillStyle(0x000000, 0.95);
+  scene.graphics.fillRect(0, 0, 800, 600);
+  
+  if (!scene.titleTextsCreated) {
+    scene.titleTextsCreated = true;
+    scene.titleMainText = scene.add.text(400, 180, 'TETRIS BLITZ', { 
+      fontSize: '72px', fill: '#ffff00', fontStyle: 'bold', 
+      stroke: '#ff2222', strokeThickness: 8 
+    }).setOrigin(0.5).setDepth(300);
+    scene.titleSubText = scene.add.text(400, 260, 'TURBO EDITION', { 
+      fontSize: '28px', fill: '#ffffff', fontStyle: 'italic', 
+      stroke: '#000000', strokeThickness: 4 
+    }).setOrigin(0.5).setDepth(300);
+    scene.titlePromptText = scene.add.text(400, 420, 'PRESS START', { 
+      fontSize: '24px', fill: '#00ffff', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(300);
+    scene.titleCreditText = scene.add.text(400, 560, 'PLATANUS HACK 26 · CARACAS', { 
+      fontSize: '14px', fill: '#666666' 
+    }).setOrigin(0.5).setDepth(300);
+  }
+  if (scene.titlePromptText) {
+    scene.titlePromptText.setAlpha(Math.sin(scene.stateTimer / 300) * 0.5 + 0.5);
+  }
+}
+
+if (scene.gameState === 'INSTRUCTIONS') {
+  scene.graphics.fillStyle(0x000000, 0.95);
+  scene.graphics.fillRect(0, 0, 800, 600);
+  
+  if (!scene.instrTextsCreated) {
+    scene.instrTextsCreated = true;
+    scene.instrTitle = scene.add.text(400, 80, 'HOW TO PLAY', { 
+      fontSize: '36px', fill: '#ffff00', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(300);
+    scene.instrControls = scene.add.text(400, 200, 
+      'JOYSTICK: MOVE\nU / Z: ROTATE\nI / X: HARD DROP\nO / C: USE POWER', 
+      { fontSize: '20px', fill: '#ffffff', align: 'center', 
+        fontStyle: 'bold', lineSpacing: 12 }
+    ).setOrigin(0.5).setDepth(300);
+    scene.instrPowerTitle = scene.add.text(400, 380, 'POWER METER', { 
+      fontSize: '24px', fill: '#ffff00', fontStyle: 'bold' 
+    }).setOrigin(0.5).setDepth(300);
+    scene.instrPower = scene.add.text(400, 480, 
+      '1/3 BAR: DESTROY PIECE\n2/3 BAR: SLOW MOTION\nFULL BAR: CLEAR 4 LINES', 
+      { fontSize: '18px', fill: '#00ffff', align: 'center', lineSpacing: 10 }
+    ).setOrigin(0.5).setDepth(300);
+  }
+}
+
+if (scene.gameState === 'COUNTDOWN') {
+  scene.graphics.fillStyle(0x000000, 0.7);
+  scene.graphics.fillRect(0, 0, 800, 600);
+  
+  if (!scene.countdownText) {
+    scene.countdownText = scene.add.text(400, 300, '3', { 
+      fontSize: '120px', fill: '#ffff00', fontStyle: 'bold', 
+      stroke: '#ff2222', strokeThickness: 8 
+    }).setOrigin(0.5).setDepth(300);
+  }
+  const secsLeft = 3 - Math.floor(scene.stateTimer / 900);
+  if (secsLeft > 0) {
+    scene.countdownText.setText(String(secsLeft));
+    scene.countdownText.setScale(1 + Math.sin((scene.stateTimer % 900) / 900 * Math.PI) * 0.3);
+    scene.countdownText.setStyle({ fill: '#ffff00', fontSize: '120px', fontStyle: 'bold', stroke: '#ff2222', strokeThickness: 8 });
+  } else {
+    scene.countdownText.setText('BLITZ!');
+    scene.countdownText.setStyle({ fill: '#00ffff', fontSize: '100px', fontStyle: 'bold', stroke: '#ffffff', strokeThickness: 6 });
+    scene.countdownText.setScale(1 + (scene.stateTimer - 2700) / 900 * 0.5);
+  }
+}
 }
 
 function drawTile(g, x, y, size, color, alpha = 1.0) {
