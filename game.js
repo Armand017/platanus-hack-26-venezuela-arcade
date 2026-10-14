@@ -215,7 +215,6 @@ function create() {
   scene.comboShakeIntensity = 0;
   scene.demoLabel = null;
 
-  scene.infoText = scene.add.text(400, 590, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(200);
 }
 
@@ -2139,7 +2138,6 @@ if (scene.scoreText) scene.scoreText.setVisible(showHUD);
 if (scene.comboLabel) scene.comboLabel.setVisible(showHUD);
 if (scene.comboValue) scene.comboValue.setVisible(showHUD);
 if (scene.rackLabel) scene.rackLabel.setVisible(showHUD);
-if (scene.infoText) scene.infoText.setVisible(showHUD);
 
 // Show board during COUNTDOWN for visual buildup
 if (scene.gameState === 'COUNTDOWN') {
