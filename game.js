@@ -362,6 +362,9 @@ scene.currentPhase = 1;
 scene.phaseLines = 0;
 scene.phaseGoal = 8;
 scene.phaseFlashTimer = 0;
+scene.phaseBarDisplay = 0;
+scene.phaseBarFlash = 0;
+scene._lastPhaseLines = 0;
   scene.statsTimer = 0;
   scene.statsComboDisplay = 0;
   scene.statsScoreDisplay = 0;
@@ -468,6 +471,7 @@ scene.statsComboShakeY = 0;
   if (scene.instrPowerTitle) { scene.instrPowerTitle.destroy(); scene.instrPowerTitle = null; }
   if (scene.instrPower) { scene.instrPower.destroy(); scene.instrPower = null; }
   if (scene.countdownText) { scene.countdownText.destroy(); scene.countdownText = null; }
+  if (scene.phaseLabelText) { scene.phaseLabelText.destroy(); scene.phaseLabelText = null; }
   if (scene.statsTitleText) { scene.statsTitleText.destroy(); scene.statsTitleText = null; }
   if (scene.statsScoreLabel) { scene.statsScoreLabel.destroy(); scene.statsScoreLabel = null; }
   if (scene.statsScoreValue) { scene.statsScoreValue.destroy(); scene.statsScoreValue = null; }
@@ -648,8 +652,14 @@ function clearLines(scene) {
   scene.comboTimer = 5500;
   scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
   scene.phaseLines += cleared;
+if (scene.phaseLines > scene._lastPhaseLines) {
+  scene.phaseBarFlash = 300;
+}
+scene._lastPhaseLines = scene.phaseLines;
 if (scene.phaseLines >= scene.phaseGoal) {
   scene.phaseLines = 0;
+  scene.phaseBarDisplay = 0;
+  scene._lastPhaseLines = 0;
   scene.currentPhase++;
   scene.phaseGoal = 8 + (scene.currentPhase - 1) * 4;
   scene.timeLeft = 60;
@@ -1099,6 +1109,14 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
   }
    if (scene.phaseFlashTimer > 0) {
   scene.phaseFlashTimer -= delta;
+}
+
+// Smooth phase bar fill
+if (scene.phaseBarDisplay < scene.phaseLines) {
+  scene.phaseBarDisplay = Math.min(scene.phaseLines, scene.phaseBarDisplay + (delta / 300) * scene.phaseGoal);
+}
+if (scene.phaseBarFlash > 0) {
+  scene.phaseBarFlash -= delta;
 }
   if (scene.gameOver) {
     if (!scene.gameOverInputLock) {
@@ -1550,6 +1568,63 @@ if (scene.controls.pressed['START1'] && scene.stateTimer > 800) {
     });
   }
   }
+
+// PHASE PROGRESS BAR (left side)
+const phaseBarW = 14;
+const phaseBarGap = 4;
+const phaseBarX = scene.boardX - phaseBarGap - phaseBarW - 4;
+const phaseBarY = scene.boardY;
+const phaseBarH = boardH;
+
+// Frame
+scene.graphics.fillStyle(0x1a0a0a, 1);
+scene.graphics.fillRect(phaseBarX - 2, phaseBarY - 2, phaseBarW + 4, phaseBarH + 4);
+scene.graphics.lineStyle(2, 0xff2222, 1);
+scene.graphics.strokeRect(phaseBarX - 2, phaseBarY - 2, phaseBarW + 4, phaseBarH + 4);
+
+// Inner background
+scene.graphics.fillStyle(0x0a0a15, 1);
+scene.graphics.fillRect(phaseBarX, phaseBarY, phaseBarW, phaseBarH);
+
+// Progress fill (use phaseBarDisplay for smooth fill)
+const phaseRatio = Math.max(0, Math.min(1, scene.phaseBarDisplay / scene.phaseGoal));
+const phaseFillHeight = phaseBarH * phaseRatio;
+
+// Fixed color by phase (never changes with combo)
+let phaseColor = 0x00ffff;
+if (scene.currentPhase >= 6) phaseColor = 0xff00ff;
+else if (scene.currentPhase >= 5) phaseColor = 0xff2222;
+else if (scene.currentPhase >= 4) phaseColor = 0xffaa00;
+else if (scene.currentPhase >= 3) phaseColor = 0xffff00;
+else if (scene.currentPhase >= 2) phaseColor = 0x00ff00;
+
+const phaseFillY = phaseBarY + (phaseBarH - phaseFillHeight);
+scene.graphics.fillStyle(phaseColor, 1);
+scene.graphics.fillRect(phaseBarX, phaseFillY, phaseBarW, phaseFillHeight);
+
+// White flash at the top of the fill (last added section)
+if (scene.phaseBarFlash > 0 && phaseFillHeight > 4) {
+  const flashAlpha = scene.phaseBarFlash / 300;
+  scene.graphics.fillStyle(0xffffff, flashAlpha * 0.9);
+  scene.graphics.fillRect(phaseBarX, phaseFillY, phaseBarW, Math.min(30, phaseFillHeight));
+}
+
+// Top glow line
+if (phaseFillHeight > 2) {
+  scene.graphics.fillStyle(0xffffff, 0.6);
+  scene.graphics.fillRect(phaseBarX, phaseFillY, phaseBarW, 2);
+}
+
+// PHASE label (rotated)
+if (!scene.phaseLabelText) {
+  scene.phaseLabelText = scene.add.text(
+    phaseBarX - 18, 
+    phaseBarY + phaseBarH / 2, 
+    'PHASE 1', 
+    { fontSize: '12px', fill: '#ff2222', fontStyle: 'bold' }
+  ).setOrigin(0.5).setDepth(20).setAngle(-90);
+}
+scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
 
   // TIME BAR (right side, adjacent to board)
   const timeBarX = scene.boardX + boardW + timeBarGap + 2;
