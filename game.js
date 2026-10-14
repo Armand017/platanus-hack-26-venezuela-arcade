@@ -112,6 +112,25 @@ function speak(text) {
   } catch (e) {}
 }
 
+// ============================================
+// PHASE BACKGROUND PALETTES
+// ============================================
+const PHASE_PALETTES = [
+  { top: 0x0a0a18, bottom: 0x000000, grid: 0x15152e, board: 0x050510 },  // Phase 1: black
+  { top: 0x0a1a2e, bottom: 0x000510, grid: 0x1a2a4e, board: 0x06081a },  // Phase 2: deep blue
+  { top: 0x0a2a20, bottom: 0x001510, grid: 0x1a4a3e, board: 0x06151a },  // Phase 3: emerald
+  { top: 0x2a1a0a, bottom: 0x100500, grid: 0x4a3a1a, board: 0x1a0e05 },  // Phase 4: amber
+  { top: 0x2a0a0a, bottom: 0x100000, grid: 0x5a1a1a, board: 0x1a0505 },  // Phase 5: crimson
+  { top: 0x2a0a2a, bottom: 0x100010, grid: 0x5a1a5a, board: 0x1a051a },  // Phase 6: violet
+  { top: 0x2a0a18, bottom: 0x100008, grid: 0x5a1a3e, board: 0x1a050e },  // Phase 7: magenta
+  { top: 0x0a0a2a, bottom: 0x000510, grid: 0x2a2a5a, board: 0x05051a }   // Phase 8+: cosmic
+];
+
+function getCurrentPalette(scene) {
+  const idx = Math.min(scene.currentPhase - 1, PHASE_PALETTES.length - 1);
+  return PHASE_PALETTES[idx];
+}
+
 new Phaser.Game(config);
 
 function preload() {}
@@ -1368,16 +1387,19 @@ if (scene.phaseBarFlash > 0) {
   
   const shouldRenderGame = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER' || scene.gameState === 'COUNTDOWN';
   if (shouldRenderGame) {
-  // Outer background pattern (diagonal lines)
-  scene.graphics.fillStyle(0x0a0a18, 1);
+  // Background gradient by phase
+  const palette = getCurrentPalette(scene);
+  scene.graphics.fillGradientStyle(palette.top, palette.top, palette.bottom, palette.bottom, 1, 1, 1, 1);
   scene.graphics.fillRect(0, 0, 800, 600);
-  scene.graphics.lineStyle(1, 0x15152e, 0.5);
+
+  // Diagonal grid pattern (recolored by palette)
+  scene.graphics.lineStyle(1, palette.grid, 0.5);
   for (let i = -600; i < 800; i += 40) {
     scene.graphics.lineBetween(i, 0, i + 600, 600);
   }
 
-  // Board background
-  scene.graphics.fillStyle(0x050510, 1);
+  // Board background (palette-derived)
+  scene.graphics.fillStyle(palette.board, 1);
   scene.graphics.fillRect(scene.boardX, scene.boardY, scene.boardWidth * scene.tileSize, scene.boardHeight * scene.tileSize);
 
   // Unified frame: board + time bar
