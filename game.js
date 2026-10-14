@@ -365,6 +365,9 @@ scene.phaseFlashTimer = 0;
 scene.phaseBarDisplay = 0;
 scene.phaseBarFlash = 0;
 scene._lastPhaseLines = 0;
+scene.phaseBarFlashFrom = 0;
+scene.phaseBarFlashTo = 0;
+scene.phaseBarFlashDuration = 0;
   scene.statsTimer = 0;
   scene.statsComboDisplay = 0;
   scene.statsScoreDisplay = 0;
@@ -653,13 +656,19 @@ function clearLines(scene) {
   scene.score += cleared * 100 * (scene.combo > 0 ? scene.combo : 1);
   scene.phaseLines += cleared;
 if (scene.phaseLines > scene._lastPhaseLines) {
-  scene.phaseBarFlash = 300;
+  scene.phaseBarFlash = 400;
+  scene.phaseBarFlashFrom = scene._lastPhaseLines;
+  scene.phaseBarFlashTo = scene.phaseLines;
+  scene.phaseBarFlashDuration = 400;
 }
 scene._lastPhaseLines = scene.phaseLines;
 if (scene.phaseLines >= scene.phaseGoal) {
   scene.phaseLines = 0;
   scene.phaseBarDisplay = 0;
   scene._lastPhaseLines = 0;
+  scene.phaseBarFlash = 0;
+  scene.phaseBarFlashFrom = 0;
+  scene.phaseBarFlashTo = 0;
   scene.currentPhase++;
   scene.phaseGoal = 8 + (scene.currentPhase - 1) * 4;
   scene.timeLeft = 60;
@@ -1602,11 +1611,21 @@ const phaseFillY = phaseBarY + (phaseBarH - phaseFillHeight);
 scene.graphics.fillStyle(phaseColor, 1);
 scene.graphics.fillRect(phaseBarX, phaseFillY, phaseBarW, phaseFillHeight);
 
-// White flash at the top of the fill (last added section)
-if (scene.phaseBarFlash > 0 && phaseFillHeight > 4) {
-  const flashAlpha = scene.phaseBarFlash / 300;
-  scene.graphics.fillStyle(0xffffff, flashAlpha * 0.9);
-  scene.graphics.fillRect(phaseBarX, phaseFillY, phaseBarW, Math.min(30, phaseFillHeight));
+// Flash on the exact section that was added
+if (scene.phaseBarFlash > 0 && scene.phaseBarFlashTo > scene.phaseBarFlashFrom) {
+  const flashRatio = scene.phaseBarFlash / scene.phaseBarFlashDuration;
+  // Y positions: from the bottom up
+  const yFrom = phaseBarY + phaseBarH - (scene.phaseBarFlashTo / scene.phaseGoal) * phaseBarH;
+  const yTo = phaseBarY + phaseBarH - (scene.phaseBarFlashFrom / scene.phaseGoal) * phaseBarH;
+  const flashH = yTo - yFrom;
+  // Interpolate white -> phaseColor
+  const c1 = Phaser.Display.Color.ValueToColor(0xffffff);
+  const c2 = Phaser.Display.Color.ValueToColor(phaseColor);
+  const t = 1 - flashRatio;
+  const interp = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, t * 100);
+  const flashColor = Phaser.Display.Color.GetColor(interp.r, interp.g, interp.b);
+  scene.graphics.fillStyle(flashColor, 1);
+  scene.graphics.fillRect(phaseBarX, yFrom, phaseBarW, flashH);
 }
 
 // Top glow line
