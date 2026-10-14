@@ -1785,21 +1785,15 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
   }
 
   if (scene.gameState !== 'COUNTDOWN') {
-  // Draw Energy Bar (MvC-style)
+  // Draw Energy Bar (rectangular with LEVEL indicator)
   const barX = 300;
   const barY = 552;
   const barW = 200;
   const barH = 24;
-  const slant = 5;
 
-  // Background parallelogram (slanted edges)
+  // Background
   scene.graphics.fillStyle(0x0a0a15, 1);
-  scene.graphics.fillPoints([
-    { x: barX + slant, y: barY },
-    { x: barX + barW, y: barY },
-    { x: barX + barW - slant, y: barY + barH },
-    { x: barX, y: barY + barH }
-  ], true);
+  scene.graphics.fillRect(barX, barY, barW, barH);
 
   // Compute level (0 to 3) based on energy
   let level = 0;
@@ -1807,19 +1801,19 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
   else if (scene.energy >= 66.66) level = 2;
   else if (scene.energy >= 33.33) level = 1;
 
-  // LEVEL label + big number on the left
+  // LEVEL label and number (centered vertically with the bar)
   if (!scene.levelNumberText) {
-    scene.levelLabelText = scene.add.text(barX - 20, barY + 10, 'LEVEL', {
-      fontSize: '10px', fill: '#ff2222', fontStyle: 'bold'
-    }).setOrigin(1, 0.5).setDepth(50);
-    scene.levelNumberText = scene.add.text(barX - 20, barY - 6, '0', {
-      fontSize: '22px', fill: '#ffff00', fontStyle: 'bold',
+    scene.levelNumberText = scene.add.text(barX - 12, barY + barH / 2 - 5, '0', {
+      fontSize: '20px', fill: '#ffff00', fontStyle: 'bold',
       stroke: '#ff2222', strokeThickness: 3
+    }).setOrigin(1, 0.5).setDepth(50);
+    scene.levelLabelText = scene.add.text(barX - 12, barY + barH / 2 + 10, 'LEVEL', {
+      fontSize: '9px', fill: '#ff2222', fontStyle: 'bold'
     }).setOrigin(1, 0.5).setDepth(50);
   }
   scene.levelNumberText.setText(String(level));
 
-  // Fill (parallelogram)
+  // Fill
   let fillW = (scene.energy / 100) * barW;
   if (fillW > 0) {
     let barColor = scene.energy >= 100 ? 0xff2222 : (scene.energy >= 66.66 ? 0xffaa00 : (scene.energy >= 33.33 ? 0xffff00 : 0x00ffff));
@@ -1836,39 +1830,20 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
     }
 
     scene.graphics.fillStyle(barColor, 1);
-    scene.graphics.fillPoints([
-      { x: barX + slant, y: barY },
-      { x: barX + fillW, y: barY },
-      { x: barX + fillW - slant, y: barY + barH },
-      { x: barX, y: barY + barH }
-    ], true);
+    scene.graphics.fillRect(barX, barY, fillW, barH);
   }
 
-  // Slanted section dividers (3 sections)
-  scene.graphics.lineStyle(2, 0x000000, 0.7);
-  scene.graphics.lineBetween(barX + barW / 3 + slant, barY, barX + barW / 3 - slant, barY + barH);
-  scene.graphics.lineBetween(barX + (barW * 2) / 3 + slant, barY, barX + (barW * 2) / 3 - slant, barY + barH);
-
-  // Outer cyan frame
-  scene.graphics.lineStyle(2, 0x00ffff, 0.9);
-  scene.graphics.strokePoints([
-    { x: barX + slant, y: barY },
-    { x: barX + barW, y: barY },
-    { x: barX + barW - slant, y: barY + barH },
-    { x: barX, y: barY + barH }
-  ], true);
+  // Section dividers
+  scene.graphics.lineStyle(2, 0xffffff, 0.3);
+  scene.graphics.lineBetween(barX + barW / 3, barY, barX + barW / 3, barY + barH);
+  scene.graphics.lineBetween(barX + (barW * 2) / 3, barY, barX + (barW * 2) / 3, barY + barH);
 
   // Neon flash for newly added energy
   if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0 && !scene.glassCracked) {
     const gainW = (scene.energyGainAmount / 100) * barW;
     const leftOfNewBlock = barX + (scene.energy / 100) * barW - gainW;
     scene.graphics.fillStyle(0xffffff, 0.8);
-    scene.graphics.fillPoints([
-      { x: leftOfNewBlock + slant, y: barY },
-      { x: barX + (scene.energy / 100) * barW, y: barY },
-      { x: barX + (scene.energy / 100) * barW - slant, y: barY + barH },
-      { x: leftOfNewBlock, y: barY + barH }
-    ], true);
+    scene.graphics.fillRect(leftOfNewBlock, barY, gainW, barH);
   }
 
   if (scene.glassBreakTimer > 0) {
