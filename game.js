@@ -244,6 +244,7 @@ function addEnergy(scene, amount) {
 function triggerGameOver(scene, message) {
   if (scene.gameOver) return;
   scene.gameOver = true;
+
   scene.gameOverInputLock = true;
   scene.time.delayedCall(1200, () => {
     scene.gameOverInputLock = false;
@@ -274,7 +275,8 @@ function triggerGameOver(scene, message) {
     fontSize: '20px', fill: '#00ffff', fontStyle: 'bold'
   }).setOrigin(0.5).setDepth(210);
   speak('GAME OVER');
-
+  
+  scene.fadeToBlackProgress = 0;
   scene.glassCracked = true;
   scene.glassColorProgress = 0;
   scene.glassCrackDelay = 2000;
@@ -387,6 +389,13 @@ scene._lastPhaseLines = 0;
 scene.phaseBarFlashFrom = 0;
 scene.phaseBarFlashTo = 0;
 scene.phaseBarFlashDuration = 0;
+scene.paletteTransition = 0;
+scene.paletteTransitionFrom = 0;
+scene.paletteTransitionTo = 0;
+scene.previousPaletteIdx = 0;
+scene.lavaTime = 0;
+scene.comboGlowIntensity = 0;
+scene.fadeToBlackProgress = 0;
   scene.statsTimer = 0;
   scene.statsComboDisplay = 0;
   scene.statsScoreDisplay = 0;
@@ -693,6 +702,9 @@ if (scene.phaseLines >= scene.phaseGoal) {
   scene.timeLeft = 60;
   scene.dropInterval = Math.max(120, 500 - (scene.currentPhase - 1) * 80);
   scene.phaseFlashTimer = 1500;
+  scene.paletteTransition = 1.0;
+scene.paletteTransitionFrom = Math.max(0, scene.currentPhase - 2);
+scene.paletteTransitionTo = Math.min(scene.currentPhase - 1, PHASE_PALETTES.length - 1);
   speak('PHASE ' + scene.currentPhase);
   const phaseText = scene.add.text(400, 400, 'PHASE ' + scene.currentPhase, {
     fontSize: '56px', fill: '#ffff00', fontStyle: 'bold',
@@ -1146,6 +1158,16 @@ if (scene.phaseBarDisplay < scene.phaseLines) {
 if (scene.phaseBarFlash > 0) {
   scene.phaseBarFlash -= delta;
 }
+
+if (scene.paletteTransition > 0) {
+  scene.paletteTransition -= delta / 7000;
+  if (scene.paletteTransition < 0) scene.paletteTransition = 0;
+}
+
+if (scene.gameOver && scene.fadeToBlackProgress < 1) {
+  scene.fadeToBlackProgress = Math.min(1, scene.fadeToBlackProgress + delta / 2000);
+}
+
   if (scene.gameOver) {
     if (!scene.gameOverInputLock) {
       const anyPressed = scene.controls.pressed['START1'] || 
@@ -1387,10 +1409,61 @@ if (scene.phaseBarFlash > 0) {
   
   const shouldRenderGame = scene.gameState === 'PLAYING' || scene.gameState === 'GAMEOVER' || scene.gameState === 'COUNTDOWN';
   if (shouldRenderGame) {
-  // Background gradient by phase
-  const palette = getCurrentPalette(scene);
+// Background gradient by phase (with checkerboard transition)
+const palette = getCurrentPalette(scene);
+
+if (scene.paletteTransition > 0) {
+  const oldPalette = PHASE_PALETTES[scene.paletteTransitionFrom] || palette;
+  
+  // Draw OLD palette as base (full screen)
+  scene.graphics.fillGradientStyle(oldPalette.top, oldPalette.top, oldPalette.bottom, oldPalette.bottom, 1, 1, 1, 1);
+  scene.graphics.fillRect(0, 0, 800, 600);
+  
+  // Draw NEW palette as checkerboard from right to left
+  const wipeProgress = 1 - scene.paletteTransition;
+  const squareSize = 50;
+  const cols = Math.ceil(800 / squareSize);
+  const rows = Math.ceil(600 / squareSize);
+  const totalWaves = 2;
+  
+  for (let c = 0; c < cols; c++) {
+    const colFromRight = c;
+    const colProgress = Math.max(0, Math.min(1, (wipeProgress * cols * totalWaves) - colFromRight * totalWaves));
+    if (colProgress <= 0) continue;
+    
+    const colX = 800 - (c + 1) * squareSize;
+    
+    for (let r = 0; r < rows; r++) {
+      const isEven = (c + r) % 2 === 0;
+      let cellProgress;
+      if (isEven) {
+        cellProgress = Math.min(1, colProgress * 2);
+      } else {
+        cellProgress = Math.max(0, colProgress * 2 - 1);
+      }
+      if (cellProgress <= 0) continue;
+      
+      const cellY = r * squareSize;
+      const cellHeight = squareSize * cellProgress;
+      
+      scene.graphics.fillStyle(palette.top, 1);
+      scene.graphics.fillRect(colX, cellY, squareSize, cellHeight);
+    }
+  }
+} else {
   scene.graphics.fillGradientStyle(palette.top, palette.top, palette.bottom, palette.bottom, 1, 1, 1, 1);
   scene.graphics.fillRect(0, 0, 800, 600);
+}
+
+// Fade to black overlay from center (on game over)
+if (scene.fadeToBlackProgress > 0) {
+  const radius = scene.fadeToBlackProgress * 600;
+  scene.graphics.fillStyle(0x000000, 1.0);
+  for (let i = 0; i < 4; i++) {
+    const r = radius - i * 15;
+    if (r > 0) scene.graphics.fillCircle(400, 300, r);
+  }
+}
 
   // Diagonal grid pattern (recolored by palette)
   scene.graphics.lineStyle(1, palette.grid, 0.5);
