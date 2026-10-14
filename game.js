@@ -230,7 +230,7 @@ function addEnergy(scene, amount) {
 
   if (oldEnergy < 100 && scene.energy >= 100) {
     playSound('powerup');
-    const floatText = scene.add.text(80, 180, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+    const floatText = scene.add.text(400, 520, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
     scene.tweens.add({
       targets: floatText,
       y: floatText.y - 40,
@@ -1311,8 +1311,8 @@ const barH = 24;
         scene.cameras.main.shake(150, 0.025);
 
         for (let i = 0; i < 20; i++) {
-          const px = 70 + Math.random() * 20;
-          const py = 200 + Math.random() * 150;
+          const px = 300 + Math.random() * 200;
+          const py = 545 + Math.random() * 24;
           const p = scene.add.rectangle(px, py, 6, 6, 0xffff00);
           scene.tweens.add({
             targets: p,
