@@ -1785,46 +1785,91 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
   }
 
   if (scene.gameState !== 'COUNTDOWN') {
-  // Draw Energy Bar
-const barX = 300;
-const barY = 552;
-const barW = 200;
-const barH = 24;
-  scene.graphics.fillStyle(0x222244, 1);
-  scene.graphics.fillRect(barX, barY, barW, barH);
-  
+  // Draw Energy Bar (MvC-style)
+  const barX = 300;
+  const barY = 552;
+  const barW = 200;
+  const barH = 24;
+  const slant = 5;
+
+  // Background parallelogram (slanted edges)
+  scene.graphics.fillStyle(0x0a0a15, 1);
+  scene.graphics.fillPoints([
+    { x: barX + slant, y: barY },
+    { x: barX + barW, y: barY },
+    { x: barX + barW - slant, y: barY + barH },
+    { x: barX, y: barY + barH }
+  ], true);
+
+  // Compute level (0 to 3) based on energy
+  let level = 0;
+  if (scene.energy >= 100) level = 3;
+  else if (scene.energy >= 66.66) level = 2;
+  else if (scene.energy >= 33.33) level = 1;
+
+  // LEVEL label + big number on the left
+  if (!scene.levelNumberText) {
+    scene.levelLabelText = scene.add.text(barX - 20, barY + 10, 'LEVEL', {
+      fontSize: '10px', fill: '#ff2222', fontStyle: 'bold'
+    }).setOrigin(1, 0.5).setDepth(50);
+    scene.levelNumberText = scene.add.text(barX - 20, barY - 6, '0', {
+      fontSize: '22px', fill: '#ffff00', fontStyle: 'bold',
+      stroke: '#ff2222', strokeThickness: 3
+    }).setOrigin(1, 0.5).setDepth(50);
+  }
+  scene.levelNumberText.setText(String(level));
+
+  // Fill (parallelogram)
   let fillW = (scene.energy / 100) * barW;
-  let barColor = scene.energy >= 66.66 ? 0x00ffff : 0xffaa00;
-  if (scene.energy >= 100) {
-    if (Math.floor(time / 200) % 2 === 0) {
-      barColor = 0xffff00;
-    } else {
-      barColor = 0x00ff00;
+  if (fillW > 0) {
+    let barColor = scene.energy >= 100 ? 0xff2222 : (scene.energy >= 66.66 ? 0xffaa00 : (scene.energy >= 33.33 ? 0xffff00 : 0x00ffff));
+    if (scene.energy >= 100) {
+      if (Math.floor(time / 150) % 2 === 0) barColor = 0xffff00;
+      else barColor = 0xff0000;
     }
+
+    if (scene.glassCracked) {
+      const c1 = Phaser.Display.Color.ValueToColor(barColor);
+      const c2 = new Phaser.Display.Color(51, 51, 51);
+      const interp = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, Math.min(100, scene.glassColorProgress * 100));
+      barColor = Phaser.Display.Color.GetColor(interp.r, interp.g, interp.b);
+    }
+
+    scene.graphics.fillStyle(barColor, 1);
+    scene.graphics.fillPoints([
+      { x: barX + slant, y: barY },
+      { x: barX + fillW, y: barY },
+      { x: barX + fillW - slant, y: barY + barH },
+      { x: barX, y: barY + barH }
+    ], true);
   }
 
-  if (scene.glassCracked) {
-    const c1 = Phaser.Display.Color.ValueToColor(barColor);
-    const c2 = new Phaser.Display.Color(51, 51, 51);
-    const interpolated = Phaser.Display.Color.Interpolate.ColorWithColor(c1, c2, 100, Math.min(100, scene.glassColorProgress * 100));
-    barColor = Phaser.Display.Color.GetColor(interpolated.r, interpolated.g, interpolated.b);
-  }
+  // Slanted section dividers (3 sections)
+  scene.graphics.lineStyle(2, 0x000000, 0.7);
+  scene.graphics.lineBetween(barX + barW / 3 + slant, barY, barX + barW / 3 - slant, barY + barH);
+  scene.graphics.lineBetween(barX + (barW * 2) / 3 + slant, barY, barX + (barW * 2) / 3 - slant, barY + barH);
 
-  scene.graphics.fillStyle(barColor, 1);
-  scene.graphics.fillRect(barX, barY, fillW, barH);
-
-// Section dividers for the 3 power levels
-scene.graphics.lineStyle(2, 0xffffff, 0.3);
-scene.graphics.lineBetween(barX + barW / 3, barY, barX + barW / 3, barY + barH);
-scene.graphics.lineBetween(barX + (barW * 2) / 3, barY, barX + (barW * 2) / 3, barY + barH);
+  // Outer cyan frame
+  scene.graphics.lineStyle(2, 0x00ffff, 0.9);
+  scene.graphics.strokePoints([
+    { x: barX + slant, y: barY },
+    { x: barX + barW, y: barY },
+    { x: barX + barW - slant, y: barY + barH },
+    { x: barX, y: barY + barH }
+  ], true);
 
   // Neon flash for newly added energy
-if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0 && !scene.glassCracked) {
-  const gainW = (scene.energyGainAmount / 100) * barW;
-  const leftOfNewBlock = barX + (scene.energy / 100) * barW - gainW;
-  scene.graphics.fillStyle(0xffffff, 1);
-  scene.graphics.fillRect(leftOfNewBlock, barY, gainW, barH);
-}
+  if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0 && !scene.glassCracked) {
+    const gainW = (scene.energyGainAmount / 100) * barW;
+    const leftOfNewBlock = barX + (scene.energy / 100) * barW - gainW;
+    scene.graphics.fillStyle(0xffffff, 0.8);
+    scene.graphics.fillPoints([
+      { x: leftOfNewBlock + slant, y: barY },
+      { x: barX + (scene.energy / 100) * barW, y: barY },
+      { x: barX + (scene.energy / 100) * barW - slant, y: barY + barH },
+      { x: leftOfNewBlock, y: barY + barH }
+    ], true);
+  }
 
   if (scene.glassBreakTimer > 0) {
     scene.graphics.lineStyle(2, Math.random() > 0.5 ? 0x00ffff : 0xffffff, 1);
