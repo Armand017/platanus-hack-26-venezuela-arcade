@@ -229,7 +229,7 @@ function addEnergy(scene, amount) {
 
   if (oldEnergy < 100 && scene.energy >= 100) {
     playSound('powerup');
-    const floatText = scene.add.text(400, 510, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+    const floatText = scene.add.text(400, 528, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
     scene.tweens.add({
       targets: floatText,
       y: floatText.y - 40,
@@ -282,7 +282,7 @@ function triggerGameOver(scene, message) {
   scene.glassCrackReady = false;
 
 const barX = 300;
-const barY = 535;
+const barY = 552;
 const barW = 200;
 const barH = 24;
 const minX = barX;
@@ -1252,7 +1252,7 @@ if (scene.gameOver && scene.fadeToBlackProgress < 1) {
         scene.glassAlpha = 0;
         scene.glassShards = [];
 const barX = 300;
-const barY = 535;
+const barY = 552;
 const barW = 200;
 const barH = 24;
         const shardCount = Phaser.Math.Between(8, 12);
@@ -1311,7 +1311,7 @@ const barH = 24;
 
         for (let i = 0; i < 20; i++) {
           const px = 300 + Math.random() * 200;
-          const py = 535 + Math.random() * 24;
+          const py = 552 + Math.random() * 24;
           const p = scene.add.rectangle(px, py, 6, 6, 0xffff00);
           scene.tweens.add({
             targets: p,
@@ -1787,7 +1787,7 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
   if (scene.gameState !== 'COUNTDOWN') {
   // Draw Energy Bar
 const barX = 300;
-const barY = 535;
+const barY = 552;
 const barW = 200;
 const barH = 24;
   scene.graphics.fillStyle(0x222244, 1);
