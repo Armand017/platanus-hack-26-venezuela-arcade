@@ -215,7 +215,7 @@ function create() {
   scene.comboShakeIntensity = 0;
   scene.demoLabel = null;
 
-  scene.infoText = scene.add.text(400, 570, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
+  scene.infoText = scene.add.text(400, 590, 'MOVE: Joystick | ROTATE: U/Z | DROP: I/X | POWER: O/C | RESTART: ENTER', { fontSize: '13px', fill: '#aaa' }).setOrigin(0.5);
   scene.gameOverText = scene.add.text(400, 300, '', { fontSize: '36px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(200);
 }
 
@@ -230,7 +230,7 @@ function addEnergy(scene, amount) {
 
   if (oldEnergy < 100 && scene.energy >= 100) {
     playSound('powerup');
-    const floatText = scene.add.text(400, 520, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+    const floatText = scene.add.text(400, 510, 'MAXIMUM!', { fontSize: '16px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
     scene.tweens.add({
       targets: floatText,
       y: floatText.y - 40,
@@ -283,7 +283,7 @@ function triggerGameOver(scene, message) {
   scene.glassCrackReady = false;
 
 const barX = 300;
-const barY = 545;
+const barY = 535;
 const barW = 200;
 const barH = 24;
 const minX = barX;
@@ -1253,7 +1253,7 @@ if (scene.gameOver && scene.fadeToBlackProgress < 1) {
         scene.glassAlpha = 0;
         scene.glassShards = [];
 const barX = 300;
-const barY = 545;
+const barY = 535;
 const barW = 200;
 const barH = 24;
         const shardCount = Phaser.Math.Between(8, 12);
@@ -1312,7 +1312,7 @@ const barH = 24;
 
         for (let i = 0; i < 20; i++) {
           const px = 300 + Math.random() * 200;
-          const py = 545 + Math.random() * 24;
+          const py = 535 + Math.random() * 24;
           const p = scene.add.rectangle(px, py, 6, 6, 0xffff00);
           scene.tweens.add({
             targets: p,
@@ -1475,12 +1475,14 @@ if (scene.fadeToBlackProgress > 0) {
   scene.graphics.fillStyle(palette.board, 1);
   scene.graphics.fillRect(scene.boardX, scene.boardY, scene.boardWidth * scene.tileSize, scene.boardHeight * scene.tileSize);
 
-  // Unified frame: board + time bar
+  // Unified frame: phase bar + board + time bar
   const boardW = scene.boardWidth * scene.tileSize;
   const boardH = scene.boardHeight * scene.tileSize;
   const timeBarW = 14;
   const timeBarGap = 4;
-  const frameLeft = scene.boardX - 4;
+  const phaseBarW = 14;
+  const phaseBarGap = 4;
+  const frameLeft = scene.boardX - phaseBarGap - phaseBarW - 8;
   const frameTop = scene.boardY - 4;
   const frameRight = scene.boardX + boardW + timeBarGap + timeBarW + 4;
   const frameBottom = scene.boardY + boardH + 4;
@@ -1497,6 +1499,11 @@ if (scene.fadeToBlackProgress > 0) {
   const separatorX = scene.boardX + boardW + 2;
   scene.graphics.lineStyle(2, 0x00ffff, 0.7);
   scene.graphics.lineBetween(separatorX, frameTop, separatorX, frameBottom);
+
+  // Vertical separator between phase bar and board (cyan)
+  const leftSeparatorX = scene.boardX - 2;
+  scene.graphics.lineStyle(2, 0x00ffff, 0.7);
+  scene.graphics.lineBetween(leftSeparatorX, frameTop, leftSeparatorX, frameBottom);
 
   // Subtle grid lines (each cell border)
   scene.graphics.lineStyle(1, 0x1a1a3e, 0.7);
@@ -1673,20 +1680,12 @@ if (scene.fadeToBlackProgress > 0) {
   }
   }
 
-// PHASE PROGRESS BAR (left side)
-const phaseBarW = 14;
-const phaseBarGap = 4;
+// PHASE PROGRESS BAR (left side) - unified with cyan frame
 const phaseBarX = scene.boardX - phaseBarGap - phaseBarW - 4;
 const phaseBarY = scene.boardY;
 const phaseBarH = boardH;
 
-// Frame
-scene.graphics.fillStyle(0x1a0a0a, 1);
-scene.graphics.fillRect(phaseBarX - 2, phaseBarY - 2, phaseBarW + 4, phaseBarH + 4);
-scene.graphics.lineStyle(2, 0xff2222, 1);
-scene.graphics.strokeRect(phaseBarX - 2, phaseBarY - 2, phaseBarW + 4, phaseBarH + 4);
-
-// Inner background
+// Inner background (no red frame)
 scene.graphics.fillStyle(0x0a0a15, 1);
 scene.graphics.fillRect(phaseBarX, phaseBarY, phaseBarW, phaseBarH);
 
@@ -1789,7 +1788,7 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
   if (scene.gameState !== 'COUNTDOWN') {
   // Draw Energy Bar
 const barX = 300;
-const barY = 545;
+const barY = 535;
 const barW = 200;
 const barH = 24;
   scene.graphics.fillStyle(0x222244, 1);
