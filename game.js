@@ -282,14 +282,14 @@ function triggerGameOver(scene, message) {
   scene.glassCrackDelay = 2000;
   scene.glassCrackReady = false;
 
-  const barX = 70;
-  const barY = 200;
-  const barW = 20;
-  const barH = 150;
-  const minX = barX;
-  const maxX = barX + barW;
-  const minY = barY;
-  const maxY = barY + barH;
+const barX = 300;
+const barY = 545;
+const barW = 200;
+const barH = 24;
+const minX = barX;
+const maxX = barX + barW;
+const minY = barY;
+const maxY = barY + barH;
 
   scene.crackPaths = [];
   const maxAngleChange = 80 * (Math.PI / 180);
@@ -1252,10 +1252,10 @@ if (scene.gameOver && scene.fadeToBlackProgress < 1) {
         scene.glassBreakTimer = 400;
         scene.glassAlpha = 0;
         scene.glassShards = [];
-        const barX = 70;
-        const barY = 200;
-        const barW = 20;
-        const barH = 150;
+const barX = 300;
+const barY = 545;
+const barW = 200;
+const barH = 24;
         const shardCount = Phaser.Math.Between(8, 12);
         for (let i = 0; i < shardCount; i++) {
           const sx = barX + Math.random() * barW;
@@ -1788,14 +1788,14 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
 
   if (scene.gameState !== 'COUNTDOWN') {
   // Draw Energy Bar
-  const barX = 70;
-  const barY = 200;
-  const barW = 20;
-  const barH = 150;
+const barX = 300;
+const barY = 545;
+const barW = 200;
+const barH = 24;
   scene.graphics.fillStyle(0x222244, 1);
   scene.graphics.fillRect(barX, barY, barW, barH);
   
-  let fillH = (scene.energy / 100) * barH;
+  let fillW = (scene.energy / 100) * barW;
   let barColor = scene.energy >= 66.66 ? 0x00ffff : 0xffaa00;
   if (scene.energy >= 100) {
     if (Math.floor(time / 200) % 2 === 0) {
@@ -1813,15 +1813,20 @@ scene.phaseLabelText.setText('PHASE ' + scene.currentPhase);
   }
 
   scene.graphics.fillStyle(barColor, 1);
-  scene.graphics.fillRect(barX, barY + (barH - fillH), barW, fillH);
+  scene.graphics.fillRect(barX, barY, fillW, barH);
+
+// Section dividers for the 3 power levels
+scene.graphics.lineStyle(2, 0xffffff, 0.3);
+scene.graphics.lineBetween(barX + barW / 3, barY, barX + barW / 3, barY + barH);
+scene.graphics.lineBetween(barX + (barW * 2) / 3, barY, barX + (barW * 2) / 3, barY + barH);
 
   // Neon flash for newly added energy
-  if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0 && !scene.glassCracked) {
-    const gainH = (scene.energyGainAmount / 100) * barH;
-    const topOfNewBlock = barY + barH - (scene.energy / 100) * barH;
-    scene.graphics.fillStyle(0xffffff, 1);
-    scene.graphics.fillRect(barX, topOfNewBlock, barW, gainH);
-  }
+if (scene.energyGainTimer > 0 && scene.energyGainAmount > 0 && !scene.glassCracked) {
+  const gainW = (scene.energyGainAmount / 100) * barW;
+  const leftOfNewBlock = barX + (scene.energy / 100) * barW - gainW;
+  scene.graphics.fillStyle(0xffffff, 1);
+  scene.graphics.fillRect(leftOfNewBlock, barY, gainW, barH);
+}
 
   if (scene.glassBreakTimer > 0) {
     scene.graphics.lineStyle(2, Math.random() > 0.5 ? 0x00ffff : 0xffffff, 1);
